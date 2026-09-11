@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deliver To - Nazeer Fresh Food</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100 flex h-screen" onload="loadData()">
+    <div class="w-64 bg-gray-900 text-white flex flex-col h-full shrink-0">
+        <div class="p-4 text-xl font-bold border-b border-gray-700">Nazeer Fresh Food</div>
+        <nav class="flex-1 p-4 space-y-2">
+            <a href="index.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Billing</a>
+            <a href="bill-to.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Bill To</a>
+            <a href="deliver-to.html" class="block p-2 bg-blue-600 rounded text-white">Deliver To</a>
+            <a href="cashbook.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Cashbook</a>
+            <a href="credit-book.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Credit Book</a>
+        </nav>
+    </div>
+
+    <div class="flex-1 flex flex-col p-6 overflow-y-auto">
+        <h2 class="text-2xl font-bold mb-6">Ship To (Deliver To) Directory</h2>
+        <div class="bg-white p-6 rounded shadow">
+            <table class="w-full border-collapse border border-gray-300">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="border p-2 text-left">Customer Name</th>
+                        <th class="border p-2 text-left">Contact</th>
+                        <th class="border p-2 text-left">Address</th>
+                    </tr>
+                </thead>
+                <tbody id="dataTable"><tr><td colspan="3" class="text-center p-4">Loading...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const supabaseClient = window.supabase.createClient('https://tmrulrlwyspnlwodrjpa.supabase.co', 'sb_publishable_tlacY2KLpvy8YjOYJiCsEA_sP1qA6zS');
+        async function loadData() {
+            const { data } = await supabaseClient.from('ship_to_customers').select('*').order('name');
+            document.getElementById('dataTable').innerHTML = (data || []).map(c => `<tr><td class="border p-2 font-bold">${c.name}</td><td class="border p-2">${c.contact||'-'}</td><td class="border p-2">${c.address||'-'}</td></tr>`).join('');
+        }
+    </script>
+</body>
+</html>
