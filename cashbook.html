@@ -188,10 +188,10 @@
             const tbody = document.getElementById('dataTable');
             
             try {
-                // Fetch any invoice that has a cash component > 0 (Handles both "Cash" and "Split" modes)
+                // Fetch invoices where cash_amount > 0 OR payment_mode is 'Cash' (to catch legacy records)
                 const { data, error } = await supabaseClient.from('invoices')
-                    .select('created_at, invoice_number, bill_to_name, payment_mode, cash_amount')
-                    .gt('cash_amount', 0)
+                    .select('created_at, invoice_number, bill_to_name, payment_mode, cash_amount, total_amount')
+                    .or('cash_amount.gt.0,payment_mode.eq.Cash')
                     .order('created_at', { ascending: false });
                 
                 if (error) throw error;
@@ -205,7 +205,12 @@
                 let total = 0;
                 
                 tbody.innerHTML = data.map(inv => {
+                    // Pull cash_amount. If 0 (because it's a legacy record), pull the total_amount instead.
                     let cashAmt = parseFloat(inv.cash_amount) || 0;
+                    if (cashAmt === 0 && inv.payment_mode === 'Cash') {
+                        cashAmt = parseFloat(inv.total_amount) || 0;
+                    }
+                    
                     total += cashAmt;
                     
                     // Format Date
