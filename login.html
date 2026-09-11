@@ -95,11 +95,12 @@
         const supabaseUrl = 'https://cbsmsclmyyxgwwztqwsc.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNic21zY2xteXl4Z3d3enRxd3NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3Nzg2MTgsImV4cCI6MjA5OTM1NDYxOH0.emzPs1e_UE-UXZVy5fYJ73GYA_o49C_IYM2EhMqLMxw'; 
         
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        // Use supabaseClient to avoid naming conflicts with the global Supabase object
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         // Check if already logged in when the page loads
         document.addEventListener("DOMContentLoaded", async () => {
-            const { data } = await supabase.auth.getSession();
+            const { data } = await supabaseClient.auth.getSession();
             if (data && data.session) {
                 // User is already logged in, redirect to main dashboard
                 window.location.href = 'index.html'; 
@@ -125,7 +126,7 @@
 
             try {
                 // Attempt to sign in via Supabase
-                const { data, error } = await supabase.auth.signInWithPassword({
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password,
                 });
