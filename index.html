@@ -47,6 +47,12 @@
                 gap: 0.5rem;
             }
         }
+
+        /* Custom Scrollbar for Dropdowns */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
     </style>
 </head>
 <body class="bg-gray-100 flex h-screen overflow-hidden" onload="initApp()">
@@ -59,7 +65,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
         </div>
-        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto custom-scroll">
             <a href="index.html" class="block p-3 md:p-2 bg-blue-600 rounded text-white font-medium shadow-sm">Billing</a>
             <a href="material-catalogue.html" class="block p-3 md:p-2 hover:bg-gray-700 rounded text-gray-300 transition-colors">Material Catalogue</a>
             <a href="customer.html" class="block p-3 md:p-2 hover:bg-gray-700 rounded text-gray-300 transition-colors">Customer</a>
@@ -84,7 +90,7 @@
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col h-full overflow-y-auto no-print w-full">
+    <div class="flex-1 flex flex-col h-full overflow-y-auto custom-scroll no-print w-full">
         <div class="p-4 md:p-6 w-full max-w-7xl mx-auto">
             
             <!-- Header -->
@@ -95,60 +101,71 @@
                     </button>
                     <h2 class="text-xl md:text-2xl font-bold text-gray-800" id="invoiceFormTitle">Create Invoice</h2>
                 </div>
-                <div class="w-full sm:w-auto">
-                    <button onclick="window.location.href='material-catalogue.html'" class="w-full sm:w-auto bg-indigo-600 text-white px-5 py-2.5 rounded shadow hover:bg-indigo-700 font-medium transition-colors">Manage Catalogue</button>
+                <div class="w-full sm:w-auto flex gap-2">
+                    <button onclick="clearForm()" class="w-full sm:w-auto bg-gray-500 text-white px-5 py-2.5 rounded shadow hover:bg-gray-600 font-medium transition-colors">New Form</button>
+                    <button onclick="window.location.href='material-catalogue.html'" class="w-full sm:w-auto bg-indigo-600 text-white px-5 py-2.5 rounded shadow hover:bg-indigo-700 font-medium transition-colors hidden md:block">Manage Catalogue</button>
                 </div>
             </div>
 
-            <!-- Datalists for Autocomplete -->
-            <datalist id="billToSuggestions"></datalist>
-            <datalist id="shipToSuggestions"></datalist>
             <input type="hidden" id="editing_invoice_id" value="">
 
             <!-- Customer Details Form -->
             <div class="bg-white p-5 md:p-6 rounded-lg shadow-sm border border-gray-200 mb-6 flex flex-col md:flex-row gap-6">
-                <div class="flex-1">
+                
+                <!-- Bill To Section -->
+                <div class="flex-1 relative">
                     <h3 class="font-bold text-gray-800 border-b pb-2 mb-4">Customer Details (Bill To)</h3>
-                    <input type="text" list="billToSuggestions" id="b_name" placeholder="Customer Name" class="w-full border border-gray-300 p-2.5 mb-3 rounded focus:ring-2 focus:ring-blue-500 outline-none" onchange="autoFillCustomer('b')" required>
-                    <input type="tel" id="b_contact" placeholder="Contact Number" class="w-full border border-gray-300 p-2.5 mb-3 rounded focus:ring-2 focus:ring-blue-500 outline-none" required>
-                    <textarea id="b_address" placeholder="Billing Address" class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-blue-500 outline-none rows="2"></textarea>
+                    
+                    <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">Customer Name *</label>
+                    <div class="relative customer-wrapper mb-3">
+                        <input type="text" id="b_name" placeholder="Search or type name..." class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm" onkeyup="showCustomerDropdown('b')" onfocus="showCustomerDropdown('b')" required autocomplete="off">
+                        <!-- Custom Dropdown Container -->
+                        <div id="b_dropdown" class="customer-dropdown absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b shadow-xl max-h-60 overflow-y-auto hidden z-50 custom-scroll mt-1"></div>
+                    </div>
+                    
+                    <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">Mobile Number *</label>
+                    <input type="tel" id="b_contact" placeholder="Search or type number..." class="w-full border border-gray-300 p-2.5 mb-3 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm" required>
+                    
+                    <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">Billing Address</label>
+                    <textarea id="b_address" placeholder="Address..." class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm" rows="2"></textarea>
                 </div>
-                <div class="flex-1">
-                    <h3 class="font-bold text-gray-800 border-b pb-2 mb-4">Deliver To (Optional)</h3>
-                    <input type="text" list="shipToSuggestions" id="d_name" placeholder="Receiver's Name" class="w-full border border-gray-300 p-2.5 mb-3 rounded focus:ring-2 focus:ring-blue-500 outline-none" onchange="autoFillCustomer('d')">
-                    <input type="tel" id="d_contact" placeholder="Contact Number" class="w-full border border-gray-300 p-2.5 mb-3 rounded focus:ring-2 focus:ring-blue-500 outline-none">
-                    <textarea id="d_address" placeholder="Delivery Address" class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-blue-500 outline-none rows="2"></textarea>
+
+                <!-- Deliver To Section -->
+                <div class="flex-1 relative">
+                    <div class="flex justify-between items-center border-b pb-2 mb-4">
+                        <h3 class="font-bold text-gray-800">Deliver To</h3>
+                        <span class="text-xs font-medium bg-gray-100 text-gray-500 px-2 py-1 rounded">Shipping Only</span>
+                    </div>
+                    
+                    <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">Receiver's Name</label>
+                    <div class="relative customer-wrapper mb-3">
+                        <input type="text" id="d_name" placeholder="Search or type name..." class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm" onkeyup="showCustomerDropdown('d')" onfocus="showCustomerDropdown('d')" autocomplete="off">
+                        <!-- Custom Dropdown Container -->
+                        <div id="d_dropdown" class="customer-dropdown absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b shadow-xl max-h-60 overflow-y-auto hidden z-50 custom-scroll mt-1"></div>
+                    </div>
+                    
+                    <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">Mobile Number</label>
+                    <input type="tel" id="d_contact" placeholder="Search or type number..." class="w-full border border-gray-300 p-2.5 mb-3 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    
+                    <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">Delivery Address</label>
+                    <textarea id="d_address" placeholder="Address..." class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm" rows="2"></textarea>
                 </div>
             </div>
 
             <!-- Items Section -->
             <div class="bg-white p-5 md:p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
-                <h3 class="font-bold text-gray-800 border-b pb-2 mb-4">Materials</h3>
-                <datalist id="catalogSuggestions"></datalist>
+                <h3 class="font-bold text-gray-800 border-b pb-2 mb-4 uppercase text-sm tracking-wider">Items Included In Invoice</h3>
                 
                 <div id="items-container">
-                    <!-- Default Item Row (Mobile Grid / Desktop Flex) -->
-                    <div class="item-row-grid mb-4 item-row bg-gray-50 md:bg-transparent p-4 md:p-0 rounded-lg border border-gray-200 md:border-0">
-                        <div class="col-span-2 md:flex-1">
-                            <input type="text" list="catalogSuggestions" placeholder="Material Description ▾ (Tap to search/select)" class="border border-gray-300 p-2.5 rounded w-full i-name focus:ring-2 focus:ring-blue-500 outline-none" onchange="autoFillItem(this)">
-                        </div>
-                        <input type="text" placeholder="Mat. Code" class="border border-gray-300 p-2.5 rounded w-full md:w-24 i-mcode focus:ring-2 focus:ring-blue-500 outline-none">
-                        <input type="text" placeholder="Category" class="border border-gray-300 p-2.5 rounded w-full md:w-28 i-cat focus:ring-2 focus:ring-blue-500 outline-none">
-                        <select class="border border-gray-300 p-2.5 rounded w-full md:w-20 i-unit focus:ring-2 focus:ring-blue-500 outline-none"><option value="Kg">Kg</option><option value="Ltr">Ltr</option><option value="Num">Num</option></select>
-                        <input type="number" placeholder="Qty" class="border border-gray-300 p-2.5 rounded w-full md:w-20 i-qty focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculateRow(this)">
-                        <input type="number" placeholder="Price" class="border border-gray-300 p-2.5 rounded w-full md:w-24 i-price focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculateRow(this)">
-                        <div class="col-span-2 md:col-span-1 md:w-28">
-                            <input type="text" placeholder="Total" class="border border-gray-300 p-2.5 rounded w-full i-total bg-gray-200 font-bold text-gray-700 outline-none" readonly>
-                        </div>
-                    </div>
+                    <!-- Dynamic Rows Inserted Here -->
                 </div>
                 
-                <button onclick="addItemRow()" class="text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-md font-bold mt-2 w-full md:w-auto transition-colors border border-blue-200 shadow-sm">+ Add Another Material</button>
+                <button onclick="addItemRow()" class="text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2.5 rounded-md font-bold mt-3 w-full md:w-auto transition-colors border border-blue-200 shadow-sm text-sm">+ Add Another Material</button>
                 
                 <!-- Remark Section -->
                 <div class="mt-6 pt-5 border-t border-gray-200">
-                    <label class="font-bold text-gray-700 mb-2 block">Invoice Remark (Will be printed):</label>
-                    <input type="text" id="invoice_remark" placeholder="e.g. Paid in advance, Special discount applied, etc." class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                    <label class="font-bold text-gray-700 mb-2 block text-sm">Invoice Remark (Will be printed):</label>
+                    <input type="text" id="invoice_remark" placeholder="e.g. Paid in advance, Special discount applied, etc." class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm">
                 </div>
             </div>
 
@@ -157,10 +174,10 @@
                 
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
                     <div class="w-full sm:w-auto">
-                        <label class="font-bold text-gray-700 mb-1 block sm:inline sm:mr-2">Payment Mode:</label>
-                        <select id="payment_mode" class="border border-gray-300 p-2.5 rounded bg-gray-50 w-full sm:w-auto outline-none focus:ring-2 focus:ring-blue-500" onchange="toggleSplitPayment()">
+                        <label class="font-bold text-gray-700 mb-1 block sm:inline sm:mr-2 text-sm">Payment Mode (Applies to Bill To):</label>
+                        <select id="payment_mode" class="border border-gray-300 p-2.5 rounded bg-gray-50 w-full sm:w-auto outline-none focus:ring-2 focus:ring-blue-500 text-sm font-semibold" onchange="toggleSplitPayment()">
                             <option value="Cash">Cash (To Cashbook)</option>
-                            <option value="Credit">Credit (To Credit Book)</option>
+                            <option value="Credit">Credit (To Customer Ledger)</option>
                             <option value="Split">Split (Cash + Credit)</option>
                         </select>
                     </div>
@@ -180,20 +197,20 @@
 
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0">
                     <div class="text-xl md:text-2xl font-bold text-gray-800 text-center sm:text-right">Total: ₹<span id="grand_total" class="text-green-600">0.00</span></div>
-                    <button onclick="saveAndPrint()" class="bg-green-600 text-white px-6 py-3 md:py-4 rounded-lg shadow-md hover:bg-green-700 font-bold text-lg transition-colors w-full sm:w-auto">Save & Print</button>
+                    <button onclick="saveAndPrint()" class="bg-gray-900 text-white px-8 py-3 md:py-4 rounded-lg shadow-md hover:bg-gray-800 font-bold text-lg transition-colors w-full sm:w-auto tracking-wide">+ Create Invoice</button>
                 </div>
             </div>
 
             <!-- Saved Invoices Section -->
             <div class="bg-white p-5 md:p-6 rounded-lg shadow-sm border border-gray-200 mb-10">
-                <h3 class="font-bold text-gray-800 border-b pb-2 mb-4 text-xl">Recent Invoices</h3>
+                <h3 class="font-bold text-gray-800 border-b pb-2 mb-4 text-sm uppercase tracking-wider">Invoices History</h3>
                 
                 <!-- Wrapping table in overflow-x-auto for mobile scrolling -->
                 <div class="overflow-x-auto rounded-lg border border-gray-200">
                     <table class="w-full border-collapse text-sm min-w-[600px]">
-                        <thead class="bg-gray-50 border-b border-gray-200 text-gray-700">
+                        <thead class="bg-gray-50 border-b border-gray-200 text-gray-500 text-xs uppercase">
                             <tr>
-                                <th class="p-3 text-left font-semibold">Inv No.</th>
+                                <th class="p-3 text-left font-semibold">Invoice</th>
                                 <th class="p-3 text-left font-semibold">Date</th>
                                 <th class="p-3 text-left font-semibold">Customer</th>
                                 <th class="p-3 text-left font-semibold">Mode</th>
@@ -206,9 +223,9 @@
                 </div>
                 
                 <div class="flex justify-between items-center mt-5">
-                    <button onclick="prevPage()" id="btnPrev" class="px-5 py-2 bg-gray-100 border border-gray-300 rounded font-medium hover:bg-gray-200 disabled:opacity-50 transition-colors">Previous</button>
-                    <span id="pageIndicator" class="font-bold text-gray-600 bg-gray-50 px-4 py-1.5 rounded-full border border-gray-200">Page 1</span>
-                    <button onclick="nextPage()" id="btnNext" class="px-5 py-2 bg-gray-100 border border-gray-300 rounded font-medium hover:bg-gray-200 disabled:opacity-50 transition-colors">Next</button>
+                    <button onclick="prevPage()" id="btnPrev" class="px-5 py-2 bg-gray-100 border border-gray-300 rounded font-medium hover:bg-gray-200 disabled:opacity-50 transition-colors text-sm">Previous</button>
+                    <span id="pageIndicator" class="font-bold text-gray-600 bg-gray-50 px-4 py-1.5 rounded-full border border-gray-200 text-xs">Page 1</span>
+                    <button onclick="nextPage()" id="btnNext" class="px-5 py-2 bg-gray-100 border border-gray-300 rounded font-medium hover:bg-gray-200 disabled:opacity-50 transition-colors text-sm">Next</button>
                 </div>
             </div>
         </div>
@@ -312,9 +329,13 @@
                 document.getElementById('sidebar').classList.add('collapsed');
             }
             
-            await checkAuth(); // Ensure user is logged in
+            await checkAuth(); 
             setupTimers();
+            setupClickOutsideListener();
             await fetchAllBaseData();
+            
+            // Add initial empty row
+            addItemRow();
             loadInvoices(1);
         }
 
@@ -325,7 +346,6 @@
                 window.location.href = 'login.html';
                 return;
             }
-            
             const userEmail = data.session.user.email;
             const userNameDisplay = userEmail.split('@')[0].toUpperCase();
             document.getElementById('userNameDisplay').innerText = userNameDisplay;
@@ -337,7 +357,7 @@
             window.location.href = 'login.html';
         }
 
-        /* ----- SIDEBAR & INACTIVITY TIMERS ----- */
+        /* ----- TIMERS & UTILS ----- */
         function setupTimers() {
             document.body.addEventListener("mousemove", resetAllTimers);
             document.body.addEventListener("keypress", resetAllTimers);
@@ -371,38 +391,117 @@
             }
         }
 
+        function setupClickOutsideListener() {
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.customer-wrapper')) {
+                    document.querySelectorAll('.customer-dropdown').forEach(el => el.classList.add('hidden'));
+                }
+                if (!e.target.closest('.material-wrapper')) {
+                    document.querySelectorAll('.material-dropdown').forEach(el => el.classList.add('hidden'));
+                }
+            });
+        }
+
         /* ----- DATA FETCHING ----- */
         async function fetchAllBaseData() {
             const { data: catData } = await supabaseClient.from('catalog').select('*');
             globalCatalog = catData || [];
-            document.getElementById('catalogSuggestions').innerHTML = globalCatalog.map(i => `<option value="${i.material_desc}">`).join('');
 
             const { data: bData } = await supabaseClient.from('bill_to_customers').select('*');
             billToData = bData || [];
-            document.getElementById('billToSuggestions').innerHTML = billToData.map(i => `<option value="${i.name}">`).join('');
 
             const { data: sData } = await supabaseClient.from('ship_to_customers').select('*');
             shipToData = sData || [];
-            document.getElementById('shipToSuggestions').innerHTML = shipToData.map(i => `<option value="${i.name}">`).join('');
         }
 
-        function autoFillItem(input) {
-            const row = input.closest('.item-row');
-            const match = globalCatalog.find(i => i.material_desc === input.value.trim());
-            if (match) {
-                row.querySelector('.i-mcode').value = match.material_code || '';
-                row.querySelector('.i-cat').value = match.category || '';
-                row.querySelector('.i-unit').value = match.unit || 'Kg';
+        /* ----- CUSTOM DROPDOWNS (Autocomplete UI) ----- */
+        
+        // 1. Customer Dropdown Logic
+        window.showCustomerDropdown = function(type) {
+            const input = document.getElementById(`${type}_name`);
+            const dropdown = document.getElementById(`${type}_dropdown`);
+            const val = input.value.toLowerCase().trim();
+            const dataList = type === 'b' ? billToData : shipToData;
+            
+            // Filter by name or contact number
+            const filtered = dataList.filter(c => 
+                c.name.toLowerCase().includes(val) || 
+                (c.contact && c.contact.toLowerCase().includes(val))
+            );
+            
+            if (filtered.length === 0) {
+                dropdown.classList.add('hidden');
+                return;
             }
+            
+            dropdown.innerHTML = filtered.map(c => {
+                const safeName = (c.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                const safeContact = (c.contact || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                const safeAddress = (c.address || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                
+                return `
+                <div class="p-3 border-b hover:bg-blue-50 cursor-pointer transition-colors" onclick="selectCustomer('${type}', '${safeName}', '${safeContact}', '${safeAddress}')">
+                    <div class="font-bold text-gray-800 text-sm flex justify-between items-center">
+                        <span>${c.name}</span>
+                        ${c.contact ? `<span class="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-0.5 rounded">${c.contact}</span>` : ''}
+                    </div>
+                </div>`;
+            }).join('');
+            
+            dropdown.classList.remove('hidden');
         }
 
-        function autoFillCustomer(type) {
-            const nameEl = document.getElementById(`${type}_name`);
-            const match = (type === 'b' ? billToData : shipToData).find(c => c.name === nameEl.value.trim());
-            if(match) {
-                document.getElementById(`${type}_contact`).value = match.contact || '';
-                document.getElementById(`${type}_address`).value = match.address || '';
+        window.selectCustomer = function(type, name, contact, address) {
+            document.getElementById(`${type}_name`).value = name;
+            document.getElementById(`${type}_contact`).value = contact;
+            document.getElementById(`${type}_address`).value = address;
+            document.getElementById(`${type}_dropdown`).classList.add('hidden');
+        }
+
+        // 2. Material Dropdown Logic
+        window.showMaterialDropdown = function(input) {
+            const val = input.value.toLowerCase().trim();
+            const wrapper = input.closest('.material-wrapper');
+            const dropdown = wrapper.querySelector('.material-dropdown');
+            
+            const filtered = globalCatalog.filter(m => 
+                m.material_desc.toLowerCase().includes(val) || 
+                (m.material_code && m.material_code.toLowerCase().includes(val))
+            );
+            
+            if (filtered.length === 0) {
+                dropdown.classList.add('hidden');
+                return;
             }
+            
+            dropdown.innerHTML = filtered.map(m => {
+                const safeDesc = (m.material_desc || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                const safeCode = (m.material_code || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                const safeCat = (m.category || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                const safeUnit = (m.unit || 'Kg').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                
+                return `
+                <div class="p-3 border-b hover:bg-blue-50 cursor-pointer transition-colors" onclick="selectMaterial(this, '${safeDesc}', '${safeCode}', '${safeCat}', '${safeUnit}')">
+                    <div class="font-bold text-gray-800 text-sm leading-tight">${m.material_desc}</div>
+                    ${m.material_code ? `<div class="text-xs text-gray-500 mt-1">${m.material_code}</div>` : ''}
+                </div>`;
+            }).join('');
+            
+            dropdown.classList.remove('hidden');
+        }
+
+        window.selectMaterial = function(element, desc, code, cat, unit) {
+            const row = element.closest('.item-row');
+            const nameInput = row.querySelector('.i-name');
+            nameInput.value = desc;
+            row.querySelector('.i-mcode').value = code;
+            row.querySelector('.i-cat').value = cat;
+            row.querySelector('.i-unit').value = unit;
+            
+            element.closest('.material-dropdown').classList.add('hidden');
+            
+            // Move focus to Qty field
+            row.querySelector('.i-qty').focus();
         }
 
         /* ----- CALCULATIONS & SPLIT LOGIC ----- */
@@ -447,25 +546,49 @@
         function addItemRow() {
             const container = document.getElementById('items-container');
             const row = document.createElement('div');
-            // Adding classes for mobile grid layout matching the hardcoded first row
-            row.className = 'item-row-grid mb-4 item-row bg-gray-50 md:bg-transparent p-4 md:p-0 rounded-lg border border-gray-200 md:border-0';
+            
+            row.className = 'item-row-grid mb-3 item-row bg-gray-50 md:bg-transparent p-4 md:p-0 rounded-lg border border-gray-200 md:border-0';
             row.innerHTML = `
-                <div class="col-span-2 md:flex-1">
-                    <input type="text" list="catalogSuggestions" placeholder="Material Description ▾ (Tap to search/select)" class="border border-gray-300 p-2.5 rounded w-full i-name focus:ring-2 focus:ring-blue-500 outline-none" onchange="autoFillItem(this)">
+                <div class="col-span-2 md:flex-1 relative material-wrapper">
+                    <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Material Description *</label>
+                    <input type="text" placeholder="Search or Type Item *" class="border border-gray-300 p-2.5 rounded w-full i-name focus:ring-2 focus:ring-blue-500 outline-none text-sm" onkeyup="showMaterialDropdown(this)" onfocus="showMaterialDropdown(this)" autocomplete="off">
+                    <!-- Dropdown -->
+                    <div class="material-dropdown absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b shadow-xl max-h-60 overflow-y-auto hidden z-50 custom-scroll mt-1"></div>
                 </div>
-                <input type="text" placeholder="Mat. Code" class="border border-gray-300 p-2.5 rounded w-full md:w-24 i-mcode focus:ring-2 focus:ring-blue-500 outline-none">
-                <input type="text" placeholder="Category" class="border border-gray-300 p-2.5 rounded w-full md:w-28 i-cat focus:ring-2 focus:ring-blue-500 outline-none">
-                <select class="border border-gray-300 p-2.5 rounded w-full md:w-20 i-unit focus:ring-2 focus:ring-blue-500 outline-none"><option value="Kg">Kg</option><option value="Ltr">Ltr</option><option value="Num">Num</option></select>
-                <input type="number" placeholder="Qty" class="border border-gray-300 p-2.5 rounded w-full md:w-20 i-qty focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculateRow(this)">
-                <input type="number" placeholder="Price" class="border border-gray-300 p-2.5 rounded w-full md:w-24 i-price focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculateRow(this)">
-                <div class="col-span-2 md:col-span-1 md:w-28">
-                    <input type="text" placeholder="Total" class="border border-gray-300 p-2.5 rounded w-full i-total bg-gray-200 font-bold text-gray-700 outline-none" readonly>
+                
+                <div class="md:w-24">
+                    <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Code</label>
+                    <input type="text" placeholder="Code" class="border border-gray-300 p-2.5 rounded w-full i-mcode focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+                
+                <div class="md:w-24">
+                    <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Category</label>
+                    <input type="text" placeholder="Cat." class="border border-gray-300 p-2.5 rounded w-full i-cat focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+                
+                <div class="md:w-20">
+                    <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Unit</label>
+                    <select class="border border-gray-300 p-2.5 rounded w-full i-unit focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"><option value="Kg">Kg</option><option value="Ltr">Ltr</option><option value="Num">Num</option></select>
+                </div>
+                
+                <div class="md:w-20">
+                    <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Qty *</label>
+                    <input type="number" placeholder="Qty" class="border border-gray-300 p-2.5 rounded w-full i-qty focus:ring-2 focus:ring-blue-500 outline-none text-sm font-semibold" oninput="calculateRow(this)">
+                </div>
+                
+                <div class="md:w-24">
+                    <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Price *</label>
+                    <input type="number" placeholder="₹ Rate" class="border border-gray-300 p-2.5 rounded w-full i-price focus:ring-2 focus:ring-blue-500 outline-none text-sm" oninput="calculateRow(this)">
+                </div>
+                
+                <div class="col-span-2 md:col-span-1 md:w-28 mt-2 md:mt-0">
+                    <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Total Amount</label>
+                    <input type="text" placeholder="Total" class="border border-gray-300 p-2.5 rounded w-full i-total bg-gray-200 font-bold text-gray-800 outline-none text-sm" readonly>
                 </div>
             `;
             container.appendChild(row);
         }
 
-        // Used internally before fetching new blanks
         function clearForm() {
             document.getElementById('editing_invoice_id').value = '';
             document.getElementById('invoiceFormTitle').innerText = 'Create Invoice';
@@ -476,7 +599,8 @@
             toggleSplitPayment();
             
             document.getElementById('items-container').innerHTML = '';
-            addItemRow(); calculateGrandTotal();
+            addItemRow(); 
+            calculateGrandTotal();
         }
 
         /* ----- SAVE & PRINT ----- */
@@ -494,10 +618,11 @@
                     totalAmount += total;
                 }
             });
-            if(items.length === 0) return alert("Add at least one material with quantity.");
+            
+            if(items.length === 0) return alert("Add at least one material description and quantity.");
 
             const btn = document.querySelector('button[onclick="saveAndPrint()"]');
-            btn.innerText = "Saving & Printing..."; btn.disabled = true;
+            btn.innerText = "Processing..."; btn.disabled = true;
             btn.classList.add('opacity-75');
 
             try {
@@ -512,8 +637,13 @@
                 if(pMode === 'Split') {
                     c_amount = parseFloat(document.getElementById('split_cash').value) || 0;
                     cr_amount = parseFloat(document.getElementById('split_credit').value) || 0;
+                } else if (pMode === 'Credit') {
+                    cr_amount = totalAmount; // Entire amount is credit
+                } else {
+                    c_amount = totalAmount; // Entire amount is cash
                 }
 
+                // Payload ties credit amounts ONLY to the Bill To customer
                 let payload = { 
                     bill_to_name: bName, bill_to_contact: document.getElementById('b_contact').value, bill_to_address: document.getElementById('b_address').value, 
                     deliver_to_name: dName, deliver_to_contact: dContact, deliver_to_address: dAddress, 
@@ -528,7 +658,7 @@
                     await supabaseClient.from('invoice_items').delete().eq('invoice_id', invoiceId);
                 } else {
                     const { count } = await supabaseClient.from('invoices').select('*', { count: 'exact', head: true });
-                    invNumber = String((count || 0) + 1).padStart(3, '0');
+                    invNumber = "INV-" + String((count || 0) + 1).padStart(4, '0');
                     payload.invoice_number = invNumber;
                     const { data } = await supabaseClient.from('invoices').insert([payload]).select();
                     invoiceId = data[0].id;
@@ -536,11 +666,15 @@
 
                 for(let item of items) {
                     await supabaseClient.from('invoice_items').insert([{ invoice_id: invoiceId, material_desc: item.name, material_code: item.mcode, category: item.cat, unit: item.unit, quantity: item.qty, unit_price: item.price, total: item.total }]);
+                    // Automatically add new materials to catalog
                     await supabaseClient.from('catalog').upsert({ material_desc: item.name, material_code: item.mcode, category: item.cat, unit: item.unit }, { onConflict: 'material_desc' });
                 }
                 
+                // Automatically add/update customer records
                 await supabaseClient.from('bill_to_customers').upsert({ name: bName, contact: document.getElementById('b_contact').value, address: document.getElementById('b_address').value }, { onConflict: 'name' });
-                await supabaseClient.from('ship_to_customers').upsert({ name: dName, contact: dContact, address: dAddress }, { onConflict: 'name' });
+                if(dName !== bName) {
+                    await supabaseClient.from('ship_to_customers').upsert({ name: dName, contact: dContact, address: dAddress }, { onConflict: 'name' });
+                }
 
                 triggerPrint(invNumber, pMode, bName, document.getElementById('b_contact').value, document.getElementById('b_address').value, dName, dContact, dAddress, items, totalAmount, remark, c_amount, cr_amount);
                 setTimeout(() => window.location.reload(), 1500);
@@ -548,7 +682,7 @@
             } catch (err) {
                 console.error(err); 
                 alert("Error saving invoice. Check console for details."); 
-                btn.innerText = "Save & Print"; 
+                btn.innerText = "+ Create Invoice"; 
                 btn.disabled = false;
                 btn.classList.remove('opacity-75');
             }
@@ -605,11 +739,11 @@
             
             tbody.innerHTML = (data||[]).map(inv => `
                 <tr class="hover:bg-blue-50 transition-colors">
-                    <td class="p-3 font-bold text-gray-800">#${inv.invoice_number}</td>
+                    <td class="p-3 font-bold text-gray-800">${inv.invoice_number}</td>
                     <td class="p-3 text-gray-600">${new Date(inv.created_at).toLocaleDateString('en-GB')}</td>
                     <td class="p-3 font-medium text-gray-800">${inv.bill_to_name}</td>
                     <td class="p-3">
-                        <span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-bold border border-gray-200 uppercase">${inv.payment_mode}</span>
+                        <span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-bold border border-gray-200 uppercase">${inv.payment_mode}</span>
                     </td>
                     <td class="p-3 text-right font-bold text-gray-800">₹${inv.total_amount.toFixed(2)}</td>
                     <td class="p-3 text-center">
@@ -628,7 +762,7 @@
             const { data: items } = await supabaseClient.from('invoice_items').select('*').eq('invoice_id', id);
             
             document.getElementById('editing_invoice_id').value = inv.id;
-            document.getElementById('invoiceFormTitle').innerHTML = `Editing Invoice: <span class="text-blue-600">#${inv.invoice_number}</span>`;
+            document.getElementById('invoiceFormTitle').innerHTML = `Editing Invoice: <span class="text-blue-600">${inv.invoice_number}</span>`;
             document.getElementById('b_name').value = inv.bill_to_name; document.getElementById('b_contact').value = inv.bill_to_contact; document.getElementById('b_address').value = inv.bill_to_address;
             document.getElementById('d_name').value = inv.deliver_to_name; document.getElementById('d_contact').value = inv.deliver_to_contact; document.getElementById('d_address').value = inv.deliver_to_address;
             
@@ -644,18 +778,43 @@
             const container = document.getElementById('items-container'); container.innerHTML = '';
             items.forEach(item => {
                 const row = document.createElement('div'); 
-                row.className = 'item-row-grid mb-4 item-row bg-gray-50 md:bg-transparent p-4 md:p-0 rounded-lg border border-gray-200 md:border-0';
+                row.className = 'item-row-grid mb-3 item-row bg-gray-50 md:bg-transparent p-4 md:p-0 rounded-lg border border-gray-200 md:border-0';
+                
                 row.innerHTML = `
-                    <div class="col-span-2 md:flex-1">
-                        <input type="text" list="catalogSuggestions" value="${item.material_desc}" class="border border-gray-300 p-2.5 rounded w-full i-name focus:ring-2 focus:ring-blue-500 outline-none" onchange="autoFillItem(this)">
+                    <div class="col-span-2 md:flex-1 relative material-wrapper">
+                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Material Description *</label>
+                        <input type="text" value="${item.material_desc}" class="border border-gray-300 p-2.5 rounded w-full i-name focus:ring-2 focus:ring-blue-500 outline-none text-sm" onkeyup="showMaterialDropdown(this)" onfocus="showMaterialDropdown(this)" autocomplete="off">
+                        <div class="material-dropdown absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b shadow-xl max-h-60 overflow-y-auto hidden z-50 custom-scroll mt-1"></div>
                     </div>
-                    <input type="text" value="${item.material_code || ''}" class="border border-gray-300 p-2.5 rounded w-full md:w-24 i-mcode focus:ring-2 focus:ring-blue-500 outline-none">
-                    <input type="text" value="${item.category || ''}" class="border border-gray-300 p-2.5 rounded w-full md:w-28 i-cat focus:ring-2 focus:ring-blue-500 outline-none">
-                    <select class="border border-gray-300 p-2.5 rounded w-full md:w-20 i-unit focus:ring-2 focus:ring-blue-500 outline-none"><option value="Kg" ${item.unit=='Kg'?'selected':''}>Kg</option><option value="Ltr" ${item.unit=='Ltr'?'selected':''}>Ltr</option><option value="Num" ${item.unit=='Num'?'selected':''}>Num</option></select>
-                    <input type="number" value="${item.quantity}" class="border border-gray-300 p-2.5 rounded w-full md:w-20 i-qty focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculateRow(this)">
-                    <input type="number" value="${item.unit_price}" class="border border-gray-300 p-2.5 rounded w-full md:w-24 i-price focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculateRow(this)">
-                    <div class="col-span-2 md:col-span-1 md:w-28">
-                        <input type="text" value="${item.total}" class="border border-gray-300 p-2.5 rounded w-full i-total bg-gray-200 font-bold text-gray-700 outline-none" readonly>
+                    
+                    <div class="md:w-24">
+                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Code</label>
+                        <input type="text" value="${item.material_code || ''}" class="border border-gray-300 p-2.5 rounded w-full i-mcode focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    
+                    <div class="md:w-24">
+                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Category</label>
+                        <input type="text" value="${item.category || ''}" class="border border-gray-300 p-2.5 rounded w-full i-cat focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    
+                    <div class="md:w-20">
+                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Unit</label>
+                        <select class="border border-gray-300 p-2.5 rounded w-full i-unit focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"><option value="Kg" ${item.unit=='Kg'?'selected':''}>Kg</option><option value="Ltr" ${item.unit=='Ltr'?'selected':''}>Ltr</option><option value="Num" ${item.unit=='Num'?'selected':''}>Num</option></select>
+                    </div>
+                    
+                    <div class="md:w-20">
+                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Qty *</label>
+                        <input type="number" value="${item.quantity}" class="border border-gray-300 p-2.5 rounded w-full i-qty focus:ring-2 focus:ring-blue-500 outline-none text-sm font-semibold" oninput="calculateRow(this)">
+                    </div>
+                    
+                    <div class="md:w-24">
+                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Price *</label>
+                        <input type="number" value="${item.unit_price}" class="border border-gray-300 p-2.5 rounded w-full i-price focus:ring-2 focus:ring-blue-500 outline-none text-sm" oninput="calculateRow(this)">
+                    </div>
+                    
+                    <div class="col-span-2 md:col-span-1 md:w-28 mt-2 md:mt-0">
+                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Total Amount</label>
+                        <input type="text" value="${item.total}" class="border border-gray-300 p-2.5 rounded w-full i-total bg-gray-200 font-bold text-gray-800 outline-none text-sm" readonly>
                     </div>
                 `;
                 container.appendChild(row);
