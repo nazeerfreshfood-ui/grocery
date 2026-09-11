@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - GSM Solution</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            background-color: #f8fafc;
+        }
+        .loader {
+            border-top-color: #3498db;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="flex h-screen items-center justify-center">
+
+    <div class="w-full max-w-md bg-white rounded-xl shadow-lg p-8 border border-gray-200">
+        <!-- Header & Logo -->
+        <div class="text-center mb-8">
+            <div class="mx-auto bg-gray-900 text-white w-12 h-12 flex items-center justify-center rounded-lg mb-4 font-bold text-sm">
+                GSM
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900">Welcome Back</h1>
+            <p class="text-gray-500 text-sm mt-1">Sign in to access GSM Solution / Nazeer Fresh Food</p>
+        </div>
+
+        <!-- Error Message Container -->
+        <div id="error-message" class="hidden mb-4 p-3 bg-red-100 text-red-700 text-sm rounded-lg border border-red-200 text-center font-medium">
+            Invalid email or password.
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-5">
+            <div>
+                <label for="email" class="block text-sm font-semibold text-gray-700 mb-1">Email Address</label>
+                <input type="email" id="email" required placeholder="Enter your email" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-semibold text-gray-700 mb-1">Password</label>
+                <input type="password" id="password" required placeholder="••••••••" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+            </div>
+
+            <button type="submit" id="loginBtn" 
+                class="w-full bg-gray-900 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-gray-800 transition-colors flex justify-center items-center gap-2 mt-4">
+                <span id="btnText">Sign In</span>
+                <div id="btnLoader" class="hidden w-4 h-4 border-2 border-white border-t-transparent rounded-full loader"></div>
+            </button>
+        </form>
+        
+        <div class="mt-6 text-center text-xs text-gray-400">
+            &copy; 2026 GSM Solution. All rights reserved.
+        </div>
+    </div>
+
+    <script>
+        // Use the Supabase keys where your auth/users are configured
+        const supabaseUrl = 'https://cbsmsclmyyxgwwztqwsc.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNic21zY2xteXl4Z3d3enRxd3NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3Nzg2MTgsImV4cCI6MjA5OTM1NDYxOH0.emzPs1e_UE-UXZVy5fYJ73GYA_o49C_IYM2EhMqLMxw'; 
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Check if already logged in when the page loads
+        document.addEventListener("DOMContentLoaded", async () => {
+            const { data } = await supabase.auth.getSession();
+            if (data && data.session) {
+                // User is already logged in, redirect to main page
+                window.location.href = 'index.html'; // Or 'billing.html' depending on your default landing page
+            }
+        });
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const errorContainer = document.getElementById('error-message');
+            const btnText = document.getElementById('btnText');
+            const btnLoader = document.getElementById('btnLoader');
+            const loginBtn = document.getElementById('loginBtn');
+
+            // Reset UI
+            errorContainer.classList.add('hidden');
+            btnText.innerText = 'Authenticating...';
+            btnLoader.classList.remove('hidden');
+            loginBtn.disabled = true;
+
+            try {
+                // Attempt to sign in
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password,
+                });
+
+                if (error) {
+                    throw error;
+                }
+
+                // Login successful, redirect
+                window.location.href = 'index.html'; // Change to 'billing.html' if that's your homepage
+
+            } catch (error) {
+                // Show error message
+                errorContainer.innerText = error.message === 'Invalid login credentials' 
+                    ? 'Invalid email or password.' 
+                    : error.message;
+                errorContainer.classList.remove('hidden');
+                
+                // Reset button state
+                btnText.innerText = 'Sign In';
+                btnLoader.classList.add('hidden');
+                loginBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
