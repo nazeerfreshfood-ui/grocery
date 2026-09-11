@@ -12,31 +12,73 @@
             #print-section { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
             body { background-color: white; margin: 0; padding: 0; }
         }
+        
+        /* Sidebar transition styles */
+        #sidebar {
+            transition: width 0.3s ease, opacity 0.3s ease;
+            overflow-x: hidden;
+            white-space: nowrap;
+        }
+        #sidebar.collapsed {
+            width: 0 !important;
+            opacity: 0;
+            padding-left: 0;
+            padding-right: 0;
+            border: none;
+        }
     </style>
 </head>
 <body class="bg-gray-100 flex h-screen" onload="initApp()">
 
     <!-- Sidebar Navigation -->
-    <div class="w-64 bg-gray-900 text-white flex flex-col no-print h-full shrink-0">
-        <div class="p-4 text-xl font-bold border-b border-gray-700">Nazeer Fresh Food</div>
-        <nav class="flex-1 p-4 space-y-2">
+    <div id="sidebar" class="w-64 bg-gray-900 text-white flex flex-col no-print h-full shrink-0" onmouseenter="clearSidebarTimer()" onmouseleave="resetSidebarTimer()">
+        <div class="p-4 text-xl font-bold border-b border-gray-700 flex justify-between items-center">
+            <span>Nazeer Fresh Food</span>
+            <button onclick="toggleSidebar()" class="text-gray-400 hover:text-white md:hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
             <a href="index.html" class="block p-2 bg-blue-600 rounded text-white">Billing</a>
             <a href="material-catalogue.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Material Catalogue</a>
-            <a href="bill-to.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Bill To</a>
-            <a href="deliver-to.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Deliver To</a>
+            <a href="customer.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Customer</a>
             <a href="cashbook.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Cashbook</a>
             <a href="credit-book.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Credit Book</a>
+            
+            <!-- Admin Only Tab -->
+            <a href="users.html" class="admin-only hidden p-2 hover:bg-gray-700 rounded text-red-400 font-bold border border-red-900 mt-4">
+                Users (Admin)
+            </a>
         </nav>
+        
+        <!-- User & Logout Section -->
+        <div class="p-4 border-t border-gray-700 flex justify-between items-center bg-gray-800">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center font-bold text-sm" id="userAvatar">U</div>
+                <div class="text-sm font-semibold truncate w-24" id="userNameDisplay">Loading...</div>
+            </div>
+            <button onclick="logOut()" class="text-gray-400 hover:text-red-500 transition-colors" title="Logout">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+            </button>
+        </div>
     </div>
 
     <!-- Main Content Area -->
     <div class="flex-1 flex flex-col h-full overflow-y-auto no-print">
         <div class="p-6 w-full">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold" id="invoiceFormTitle">Create Invoice</h2>
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleSidebar()" class="bg-gray-200 p-2 rounded hover:bg-gray-300 text-gray-700" title="Toggle Sidebar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </button>
+                    <h2 class="text-2xl font-bold" id="invoiceFormTitle">Create Invoice</h2>
+                </div>
                 <div>
                     <button onclick="clearForm()" class="bg-gray-500 text-white px-4 py-2 rounded shadow hover:bg-gray-600 mr-2">New Form</button>
-                    <!-- Redirects to the new full page -->
                     <button onclick="window.location.href='material-catalogue.html'" class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700">Material Catalogue</button>
                 </div>
             </div>
@@ -48,13 +90,13 @@
 
             <div class="bg-white p-6 rounded shadow mb-6 flex gap-6">
                 <div class="flex-1">
-                    <h3 class="font-bold border-b pb-2 mb-4">Bill To</h3>
+                    <h3 class="font-bold border-b pb-2 mb-4">Customer Details (Bill To)</h3>
                     <input type="text" list="billToSuggestions" id="b_name" placeholder="Customer Name" class="w-full border p-2 mb-2 rounded" onchange="autoFillCustomer('b')" required>
                     <input type="text" id="b_contact" placeholder="Contact Number" class="w-full border p-2 mb-2 rounded" required>
                     <textarea id="b_address" placeholder="Address" class="w-full border p-2 rounded"></textarea>
                 </div>
                 <div class="flex-1">
-                    <h3 class="font-bold border-b pb-2 mb-4">Deliver To (Ship To)</h3>
+                    <h3 class="font-bold border-b pb-2 mb-4">Deliver To (Optional)</h3>
                     <input type="text" list="shipToSuggestions" id="d_name" placeholder="Name" class="w-full border p-2 mb-2 rounded" onchange="autoFillCustomer('d')">
                     <input type="text" id="d_contact" placeholder="Contact Number" class="w-full border p-2 mb-2 rounded">
                     <textarea id="d_address" placeholder="Address" class="w-full border p-2 rounded"></textarea>
@@ -77,17 +119,35 @@
                     </div>
                 </div>
                 <button onclick="addItemRow()" class="text-blue-600 font-bold mt-2">+ Add Material</button>
+                
+                <!-- Remark Section -->
+                <div class="mt-4 pt-4 border-t">
+                    <label class="font-bold mb-2 block">Invoice Remark (Will be printed):</label>
+                    <input type="text" id="invoice_remark" placeholder="e.g. Paid in advance, Special discount applied, etc." class="w-full border p-2 rounded">
+                </div>
             </div>
 
             <!-- Payment & Actions -->
-            <div class="bg-white p-6 rounded shadow flex justify-between items-center mb-10">
-                <div>
-                    <label class="font-bold mr-2">Payment Mode:</label>
-                    <select id="payment_mode" class="border p-2 rounded bg-gray-50">
-                        <option value="Cash">Cash (To Cashbook)</option>
-                        <option value="Credit">Credit (To Credit Book)</option>
-                    </select>
+            <div class="bg-white p-6 rounded shadow flex justify-between items-center mb-10 flex-wrap gap-4">
+                <div class="flex items-center flex-wrap gap-4">
+                    <div>
+                        <label class="font-bold mr-2">Payment Mode:</label>
+                        <select id="payment_mode" class="border p-2 rounded bg-gray-50" onchange="toggleSplitPayment()">
+                            <option value="Cash">Cash (To Cashbook)</option>
+                            <option value="Credit">Credit (To Credit Book)</option>
+                            <option value="Split">Split (Cash + Credit)</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Split Payment Fields (Hidden by default) -->
+                    <div id="split_fields" class="hidden flex items-center gap-2 bg-blue-50 p-2 rounded border border-blue-200">
+                        <div class="text-sm font-bold text-blue-800">Cash:</div>
+                        <input type="number" id="split_cash" placeholder="₹" class="border p-1 rounded w-20 text-sm" oninput="calculateSplitAmount()">
+                        <div class="text-sm font-bold text-red-800 ml-2">Credit:</div>
+                        <input type="number" id="split_credit" placeholder="₹" class="border p-1 rounded w-20 text-sm bg-gray-100 text-red-600 font-bold" readonly>
+                    </div>
                 </div>
+
                 <div class="text-xl font-bold">Grand Total: ₹<span id="grand_total">0.00</span></div>
                 <button onclick="saveAndPrint()" class="bg-green-600 text-white px-6 py-3 rounded shadow hover:bg-green-700 font-bold">Save & Print Invoice</button>
             </div>
@@ -135,7 +195,7 @@
                 <p><strong>Contact:</strong> +919529816206</p>
             </div>
             <div class="w-1/3 px-4 border-r border-black">
-                <h3 class="font-bold border-b border-black mb-1">Bill To</h3>
+                <h3 class="font-bold border-b border-black mb-1">Customer (Bill To)</h3>
                 <p><strong id="p_b_name"></strong></p>
                 <p id="p_b_address"></p>
                 <p><strong>Contact:</strong> <span id="p_b_contact"></span></p>
@@ -153,6 +213,11 @@
             <p>Date: <span id="p_date" class="font-normal"></span></p>
             <p>Payment Mode: <span id="p_mode" class="font-normal"></span></p>
         </div>
+        
+        <div id="p_split_banner" class="hidden mb-4 bg-gray-100 border border-black p-2 font-bold text-sm flex gap-6">
+            <span>Amount Paid (Cash): ₹<span id="p_split_cash_amt">0.00</span></span>
+            <span>Pending Balance (Credit): ₹<span id="p_split_credit_amt">0.00</span></span>
+        </div>
 
         <table class="w-full mb-6 border-collapse border border-black">
             <thead>
@@ -169,7 +234,12 @@
             <tbody id="p_items_body"></tbody>
         </table>
 
-        <div class="flex justify-end items-end mt-8">
+        <!-- Remark Print Banner -->
+        <div id="p_remark_container" class="hidden mb-4 border border-black p-2 text-sm">
+            <strong>Remark: </strong> <span id="p_remark_text"></span>
+        </div>
+
+        <div class="flex justify-end items-end mt-4">
             <div class="text-lg font-bold border-2 border-black p-2">Grand Total: ₹<span id="p_grand_total"></span></div>
         </div>
 
@@ -191,17 +261,79 @@
         const supabaseUrl = 'https://tmrulrlwyspnlwodrjpa.supabase.co'; 
         const supabaseKey = 'sb_publishable_tlacY2KLpvy8YjOYJiCsEA_sP1qA6zS';
         const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+        const ADMIN_EMAIL = 'gsmmargao@gmail.com';
 
         let globalCatalog = []; let billToData = []; let shipToData = [];
         let currentPage = 1; const limitPerPage = 10;
+        let sidebarTimer; let inactivityTimer;
 
         async function initApp() {
+            await checkAuth(); // Kicks out if not logged in
+            setupTimers();
             await fetchAllBaseData();
             loadInvoices(1);
         }
 
+        /* ----- AUTHENTICATION & ADMIN ----- */
+        async function checkAuth() {
+            const { data } = await supabaseClient.auth.getSession();
+            if (!data || !data.session) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            const userEmail = data.session.user.email;
+            const userNameDisplay = userEmail.split('@')[0].toUpperCase();
+            document.getElementById('userNameDisplay').innerText = userNameDisplay;
+            document.getElementById('userAvatar').innerText = userNameDisplay.charAt(0);
+
+            // Show admin tabs if it's the admin
+            if (userEmail.trim().toLowerCase() === ADMIN_EMAIL.trim().toLowerCase()) {
+                document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+            }
+        }
+
+        async function logOut() {
+            await supabaseClient.auth.signOut();
+            window.location.href = 'login.html';
+        }
+
+        /* ----- SIDEBAR & INACTIVITY TIMERS ----- */
+        function setupTimers() {
+            document.body.addEventListener("mousemove", resetAllTimers);
+            document.body.addEventListener("keypress", resetAllTimers);
+            document.body.addEventListener("click", resetAllTimers);
+            document.body.addEventListener("scroll", resetAllTimers);
+            resetAllTimers();
+        }
+
+        function resetAllTimers() {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(logOut, 30 * 60 * 1000); // 30 min full logout
+            resetSidebarTimer();
+        }
+
+        window.resetSidebarTimer = function() {
+            clearTimeout(sidebarTimer);
+            sidebarTimer = setTimeout(() => {
+                const sb = document.getElementById('sidebar');
+                if (sb) sb.classList.add('collapsed');
+            }, 30000); 
+        }
+
+        window.clearSidebarTimer = function() { clearTimeout(sidebarTimer); }
+
+        window.toggleSidebar = function() {
+            const sb = document.getElementById('sidebar');
+            if (sb) {
+                sb.classList.toggle('collapsed');
+                if(!sb.classList.contains('collapsed')) resetSidebarTimer();
+                else clearSidebarTimer();
+            }
+        }
+
+        /* ----- DATA FETCHING ----- */
         async function fetchAllBaseData() {
-            // Load materials for the dropdown suggestions
             const { data: catData } = await supabaseClient.from('catalog').select('*');
             globalCatalog = catData || [];
             document.getElementById('catalogSuggestions').innerHTML = globalCatalog.map(i => `<option value="${i.material_desc}">`).join('');
@@ -234,6 +366,7 @@
             }
         }
 
+        /* ----- CALCULATIONS & SPLIT LOGIC ----- */
         function calculateRow(element) {
             const row = element.closest('.item-row');
             const qty = parseFloat(row.querySelector('.i-qty').value) || 0;
@@ -246,6 +379,28 @@
             let grand = 0;
             document.querySelectorAll('.i-total').forEach(input => grand += parseFloat(input.value) || 0);
             document.getElementById('grand_total').innerText = grand.toFixed(2);
+            calculateSplitAmount(); // Update split fields if active
+        }
+
+        function toggleSplitPayment() {
+            const mode = document.getElementById('payment_mode').value;
+            const splitFields = document.getElementById('split_fields');
+            if (mode === 'Split') {
+                splitFields.classList.remove('hidden');
+                calculateSplitAmount();
+            } else {
+                splitFields.classList.add('hidden');
+                document.getElementById('split_cash').value = '';
+                document.getElementById('split_credit').value = '';
+            }
+        }
+
+        function calculateSplitAmount() {
+            if (document.getElementById('payment_mode').value !== 'Split') return;
+            const grandTotal = parseFloat(document.getElementById('grand_total').innerText) || 0;
+            const cashVal = parseFloat(document.getElementById('split_cash').value) || 0;
+            const pendingCredit = grandTotal - cashVal;
+            document.getElementById('split_credit').value = pendingCredit >= 0 ? pendingCredit.toFixed(2) : '0.00';
         }
 
         function addItemRow() {
@@ -269,13 +424,18 @@
             document.getElementById('invoiceFormTitle').innerText = 'Create Invoice';
             document.getElementById('b_name').value = ''; document.getElementById('b_contact').value = ''; document.getElementById('b_address').value = '';
             document.getElementById('d_name').value = ''; document.getElementById('d_contact').value = ''; document.getElementById('d_address').value = '';
+            document.getElementById('invoice_remark').value = '';
+            document.getElementById('payment_mode').value = 'Cash';
+            toggleSplitPayment();
+            
             document.getElementById('items-container').innerHTML = '';
             addItemRow(); calculateGrandTotal();
         }
 
+        /* ----- SAVE & PRINT ----- */
         async function saveAndPrint() {
             const bName = document.getElementById('b_name').value.trim();
-            if(!bName) return alert("Please enter Bill To Name");
+            if(!bName) return alert("Please enter Customer Name");
 
             const itemsRows = document.querySelectorAll('.item-row');
             let items = []; let totalAmount = 0;
@@ -298,16 +458,32 @@
                 const dName = document.getElementById('d_name').value || bName;
                 const dContact = document.getElementById('d_contact').value || document.getElementById('b_contact').value;
                 const dAddress = document.getElementById('d_address').value || document.getElementById('b_address').value;
+                const remark = document.getElementById('invoice_remark').value.trim();
+                
+                let c_amount = 0, cr_amount = 0;
+                if(pMode === 'Split') {
+                    c_amount = parseFloat(document.getElementById('split_cash').value) || 0;
+                    cr_amount = parseFloat(document.getElementById('split_credit').value) || 0;
+                }
+
+                // Prepare insert/update payload (ensure your Supabase table accepts remark, cash_amount, credit_amount if you want them saved to DB. If not, they will be ignored or cause an error. Modify payload if necessary).
+                let payload = { 
+                    bill_to_name: bName, bill_to_contact: document.getElementById('b_contact').value, bill_to_address: document.getElementById('b_address').value, 
+                    deliver_to_name: dName, deliver_to_contact: dContact, deliver_to_address: dAddress, 
+                    payment_mode: pMode, total_amount: totalAmount,
+                    remark: remark, cash_amount: c_amount, credit_amount: cr_amount
+                };
                 
                 let invNumber = "";
                 if(invoiceId) {
-                    const { data } = await supabaseClient.from('invoices').update({ bill_to_name: bName, bill_to_contact: document.getElementById('b_contact').value, bill_to_address: document.getElementById('b_address').value, deliver_to_name: dName, deliver_to_contact: dContact, deliver_to_address: dAddress, payment_mode: pMode, total_amount: totalAmount }).eq('id', invoiceId).select();
+                    const { data } = await supabaseClient.from('invoices').update(payload).eq('id', invoiceId).select();
                     invNumber = data[0].invoice_number;
                     await supabaseClient.from('invoice_items').delete().eq('invoice_id', invoiceId);
                 } else {
                     const { count } = await supabaseClient.from('invoices').select('*', { count: 'exact', head: true });
                     invNumber = String((count || 0) + 1).padStart(3, '0');
-                    const { data } = await supabaseClient.from('invoices').insert([{ invoice_number: invNumber, bill_to_name: bName, bill_to_contact: document.getElementById('b_contact').value, bill_to_address: document.getElementById('b_address').value, deliver_to_name: dName, deliver_to_contact: dContact, deliver_to_address: dAddress, payment_mode: pMode, total_amount: totalAmount }]).select();
+                    payload.invoice_number = invNumber;
+                    const { data } = await supabaseClient.from('invoices').insert([payload]).select();
                     invoiceId = data[0].id;
                 }
 
@@ -319,7 +495,7 @@
                 await supabaseClient.from('bill_to_customers').upsert({ name: bName, contact: document.getElementById('b_contact').value, address: document.getElementById('b_address').value }, { onConflict: 'name' });
                 await supabaseClient.from('ship_to_customers').upsert({ name: dName, contact: dContact, address: dAddress }, { onConflict: 'name' });
 
-                triggerPrint(invNumber, pMode, bName, document.getElementById('b_contact').value, document.getElementById('b_address').value, dName, dContact, dAddress, items, totalAmount);
+                triggerPrint(invNumber, pMode, bName, document.getElementById('b_contact').value, document.getElementById('b_address').value, dName, dContact, dAddress, items, totalAmount, remark, c_amount, cr_amount);
                 setTimeout(() => window.location.reload(), 1500);
 
             } catch (err) {
@@ -327,13 +503,32 @@
             }
         }
 
-        function triggerPrint(invNum, pMode, bName, bContact, bAddress, dName, dContact, dAddress, items, total) {
+        function triggerPrint(invNum, pMode, bName, bContact, bAddress, dName, dContact, dAddress, items, total, remark = '', cashAmt = 0, creditAmt = 0) {
             document.getElementById('p_inv_no').innerText = invNum;
             document.getElementById('p_date').innerText = new Date().toLocaleDateString();
             document.getElementById('p_mode').innerText = pMode;
             document.getElementById('p_b_name').innerText = bName; document.getElementById('p_b_contact').innerText = bContact; document.getElementById('p_b_address').innerText = bAddress;
             document.getElementById('p_d_name').innerText = dName; document.getElementById('p_d_contact').innerText = dContact; document.getElementById('p_d_address').innerText = dAddress;
             
+            // Handle Remark
+            const pRemarkContainer = document.getElementById('p_remark_container');
+            if (remark) {
+                document.getElementById('p_remark_text').innerText = remark;
+                pRemarkContainer.classList.remove('hidden');
+            } else {
+                pRemarkContainer.classList.add('hidden');
+            }
+
+            // Handle Split Banner
+            const pSplitBanner = document.getElementById('p_split_banner');
+            if (pMode === 'Split') {
+                document.getElementById('p_split_cash_amt').innerText = cashAmt.toFixed(2);
+                document.getElementById('p_split_credit_amt').innerText = creditAmt.toFixed(2);
+                pSplitBanner.classList.remove('hidden');
+            } else {
+                pSplitBanner.classList.add('hidden');
+            }
+
             const tbody = document.getElementById('p_items_body'); tbody.innerHTML = '';
             items.forEach((item, i) => {
                 tbody.innerHTML += `<tr>
@@ -379,7 +574,15 @@
             document.getElementById('invoiceFormTitle').innerHTML = `Editing: <span class="text-blue-600">#${inv.invoice_number}</span>`;
             document.getElementById('b_name').value = inv.bill_to_name; document.getElementById('b_contact').value = inv.bill_to_contact; document.getElementById('b_address').value = inv.bill_to_address;
             document.getElementById('d_name').value = inv.deliver_to_name; document.getElementById('d_contact').value = inv.deliver_to_contact; document.getElementById('d_address').value = inv.deliver_to_address;
+            
+            document.getElementById('invoice_remark').value = inv.remark || '';
             document.getElementById('payment_mode').value = inv.payment_mode;
+            
+            if(inv.payment_mode === 'Split') {
+                document.getElementById('split_cash').value = inv.cash_amount || '';
+                document.getElementById('split_credit').value = inv.credit_amount || '';
+            }
+            toggleSplitPayment();
 
             const container = document.getElementById('items-container'); container.innerHTML = '';
             items.forEach(item => {
@@ -402,7 +605,7 @@
             const { data: inv } = await supabaseClient.from('invoices').select('*').eq('id', id).single();
             const { data: items } = await supabaseClient.from('invoice_items').select('*').eq('invoice_id', id);
             let fItems = items.map(i => ({ name: i.material_desc, mcode: i.material_code, unit: i.unit, qty: i.quantity, price: i.unit_price, total: i.total }));
-            triggerPrint(inv.invoice_number, inv.payment_mode, inv.bill_to_name, inv.bill_to_contact, inv.bill_to_address, inv.deliver_to_name, inv.deliver_to_contact, inv.deliver_to_address, fItems, inv.total_amount);
+            triggerPrint(inv.invoice_number, inv.payment_mode, inv.bill_to_name, inv.bill_to_contact, inv.bill_to_address, inv.deliver_to_name, inv.deliver_to_contact, inv.deliver_to_address, fItems, inv.total_amount, inv.remark, inv.cash_amount, inv.credit_amount);
         }
 
         function prevPage() { if (currentPage > 1) loadInvoices(currentPage - 1); }
