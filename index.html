@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nazeer Fresh Food Market - Billing System</title>
+    <title>Billing - Nazeer Fresh Food</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -12,9 +12,6 @@
             #print-section { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
             body { background-color: white; margin: 0; padding: 0; }
         }
-        .tab-content { display: none; }
-        .tab-content.active { display: flex; }
-        .nav-link.active { background-color: #2563eb; color: white; }
     </style>
 </head>
 <body class="bg-gray-100 flex h-screen" onload="initApp()">
@@ -23,19 +20,17 @@
     <div class="w-64 bg-gray-900 text-white flex flex-col no-print h-full shrink-0">
         <div class="p-4 text-xl font-bold border-b border-gray-700">Nazeer Fresh Food</div>
         <nav class="flex-1 p-4 space-y-2">
-            <button onclick="switchTab('billing')" id="nav-billing" class="nav-link active w-full text-left block p-2 rounded hover:bg-gray-700">Billing</button>
-            <button onclick="switchTab('billto')" id="nav-billto" class="nav-link w-full text-left block p-2 rounded hover:bg-gray-700">Bill To</button>
-            <button onclick="switchTab('deliverto')" id="nav-deliverto" class="nav-link w-full text-left block p-2 rounded hover:bg-gray-700">Deliver To</button>
-            <button onclick="switchTab('cashbook')" id="nav-cashbook" class="nav-link w-full text-left block p-2 rounded hover:bg-gray-700">Cashbook</button>
-            <button onclick="switchTab('creditbook')" id="nav-creditbook" class="nav-link w-full text-left block p-2 rounded hover:bg-gray-700">Credit Book</button>
+            <a href="index.html" class="block p-2 bg-blue-600 rounded text-white">Billing</a>
+            <a href="bill-to.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Bill To</a>
+            <a href="deliver-to.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Deliver To</a>
+            <a href="cashbook.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Cashbook</a>
+            <a href="credit-book.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Credit Book</a>
         </nav>
     </div>
 
-    <!-- MAIN CONTENT AREA -->
-    <div class="flex-1 flex flex-col h-full overflow-y-auto no-print relative">
-        
-        <!-- 1. BILLING TAB -->
-        <div id="tab-billing" class="tab-content active flex-col p-6 w-full">
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col h-full overflow-y-auto no-print">
+        <div class="p-6 w-full">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold" id="invoiceFormTitle">Create Invoice</h2>
                 <div>
@@ -47,18 +42,15 @@
             <!-- Customer Details Form -->
             <datalist id="billToSuggestions"></datalist>
             <datalist id="shipToSuggestions"></datalist>
-            
             <input type="hidden" id="editing_invoice_id" value="">
 
             <div class="bg-white p-6 rounded shadow mb-6 flex gap-6">
-                <!-- Bill To -->
                 <div class="flex-1">
                     <h3 class="font-bold border-b pb-2 mb-4">Bill To</h3>
                     <input type="text" list="billToSuggestions" id="b_name" placeholder="Customer Name" class="w-full border p-2 mb-2 rounded" onchange="autoFillCustomer('b')" required>
                     <input type="text" id="b_contact" placeholder="Contact Number" class="w-full border p-2 mb-2 rounded" required>
                     <textarea id="b_address" placeholder="Address" class="w-full border p-2 rounded"></textarea>
                 </div>
-                <!-- Deliver To -->
                 <div class="flex-1">
                     <h3 class="font-bold border-b pb-2 mb-4">Deliver To (Ship To)</h3>
                     <input type="text" list="shipToSuggestions" id="d_name" placeholder="Name" class="w-full border p-2 mb-2 rounded" onchange="autoFillCustomer('d')">
@@ -71,17 +63,12 @@
             <div class="bg-white p-6 rounded shadow mb-6">
                 <h3 class="font-bold border-b pb-2 mb-4">Items</h3>
                 <datalist id="catalogSuggestions"></datalist>
-                
                 <div id="items-container">
                     <div class="flex gap-2 mb-2 item-row">
                         <input type="text" list="catalogSuggestions" placeholder="Material Description" class="border p-2 rounded flex-1 i-name" onchange="autoFillItem(this)">
                         <input type="text" placeholder="Mat. Code" class="border p-2 rounded w-24 i-mcode">
                         <input type="text" placeholder="Category" class="border p-2 rounded w-24 i-cat">
-                        <select class="border p-2 rounded w-20 i-unit">
-                            <option value="Kg">Kg</option>
-                            <option value="Ltr">Ltr</option>
-                            <option value="Num">Num</option>
-                        </select>
+                        <select class="border p-2 rounded w-20 i-unit"><option value="Kg">Kg</option><option value="Ltr">Ltr</option><option value="Num">Num</option></select>
                         <input type="number" placeholder="Qty" class="border p-2 rounded w-20 i-qty" oninput="calculateRow(this)">
                         <input type="number" placeholder="Unit Price" class="border p-2 rounded w-24 i-price" oninput="calculateRow(this)">
                         <input type="text" placeholder="Total" class="border p-2 rounded w-24 i-total bg-gray-100" readonly>
@@ -109,103 +96,21 @@
                 <table class="w-full border-collapse border border-gray-300 text-sm">
                     <thead class="bg-gray-100">
                         <tr>
-                            <th class="border border-gray-300 p-2 text-left">Inv No.</th>
-                            <th class="border border-gray-300 p-2 text-left">Date</th>
-                            <th class="border border-gray-300 p-2 text-left">Customer</th>
-                            <th class="border border-gray-300 p-2 text-left">Mode</th>
-                            <th class="border border-gray-300 p-2 text-right">Total (₹)</th>
-                            <th class="border border-gray-300 p-2 text-center w-24">Actions</th>
+                            <th class="border p-2 text-left">Inv No.</th>
+                            <th class="border p-2 text-left">Date</th>
+                            <th class="border p-2 text-left">Customer</th>
+                            <th class="border p-2 text-left">Mode</th>
+                            <th class="border p-2 text-right">Total (₹)</th>
+                            <th class="border p-2 text-center w-24">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="savedInvoicesList"></tbody>
                 </table>
                 <div class="flex justify-between items-center mt-4">
-                    <button onclick="prevPage()" id="btnPrev" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50">Previous</button>
+                    <button onclick="prevPage()" id="btnPrev" class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50">Previous</button>
                     <span id="pageIndicator" class="font-bold">Page 1</span>
-                    <button onclick="nextPage()" id="btnNext" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50">Next</button>
+                    <button onclick="nextPage()" id="btnNext" class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50">Next</button>
                 </div>
-            </div>
-        </div>
-
-        <!-- 2. BILL TO TAB -->
-        <div id="tab-billto" class="tab-content flex-col p-6 w-full">
-            <h2 class="text-2xl font-bold mb-6">Bill To Customer Directory</h2>
-            <div class="bg-white p-6 rounded shadow">
-                <table class="w-full border-collapse border border-gray-300">
-                    <thead class="bg-gray-100">
-                        <tr>
-                            <th class="border border-gray-300 p-2 text-left">Name</th>
-                            <th class="border border-gray-300 p-2 text-left">Contact</th>
-                            <th class="border border-gray-300 p-2 text-left">Address</th>
-                        </tr>
-                    </thead>
-                    <tbody id="billToTableBody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- 3. DELIVER TO TAB -->
-        <div id="tab-deliverto" class="tab-content flex-col p-6 w-full">
-            <h2 class="text-2xl font-bold mb-6">Deliver To (Ship To) Directory</h2>
-            <div class="bg-white p-6 rounded shadow">
-                <table class="w-full border-collapse border border-gray-300">
-                    <thead class="bg-gray-100">
-                        <tr>
-                            <th class="border border-gray-300 p-2 text-left">Name</th>
-                            <th class="border border-gray-300 p-2 text-left">Contact</th>
-                            <th class="border border-gray-300 p-2 text-left">Address</th>
-                        </tr>
-                    </thead>
-                    <tbody id="shipToTableBody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- 4. CASHBOOK TAB -->
-        <div id="tab-cashbook" class="tab-content flex-col p-6 w-full">
-            <h2 class="text-2xl font-bold mb-6 text-green-700">Cashbook Ledger</h2>
-            <div class="bg-white p-6 rounded shadow">
-                <table class="w-full border-collapse border border-gray-300">
-                    <thead class="bg-gray-100">
-                        <tr>
-                            <th class="border border-gray-300 p-2 text-left">Date</th>
-                            <th class="border border-gray-300 p-2 text-left">Invoice No</th>
-                            <th class="border border-gray-300 p-2 text-left">Customer</th>
-                            <th class="border border-gray-300 p-2 text-right">Cash In (₹)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="cashbookTableBody"></tbody>
-                    <tfoot>
-                        <tr class="bg-green-100 font-bold">
-                            <td colspan="3" class="border border-gray-300 p-2 text-right">Total Cash Sales:</td>
-                            <td class="border border-gray-300 p-2 text-right text-green-800" id="totalCash">0.00</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
-
-        <!-- 5. CREDIT BOOK TAB -->
-        <div id="tab-creditbook" class="tab-content flex-col p-6 w-full">
-            <h2 class="text-2xl font-bold mb-6 text-red-700">Credit Book (Pending Dues)</h2>
-            <div class="bg-white p-6 rounded shadow">
-                <table class="w-full border-collapse border border-gray-300">
-                    <thead class="bg-gray-100">
-                        <tr>
-                            <th class="border border-gray-300 p-2 text-left">Date</th>
-                            <th class="border border-gray-300 p-2 text-left">Invoice No</th>
-                            <th class="border border-gray-300 p-2 text-left">Customer</th>
-                            <th class="border border-gray-300 p-2 text-right">Credit Pending (₹)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="creditbookTableBody"></tbody>
-                    <tfoot>
-                        <tr class="bg-red-100 font-bold">
-                            <td colspan="3" class="border border-gray-300 p-2 text-right">Total Pending Dues:</td>
-                            <td class="border border-gray-300 p-2 text-right text-red-800" id="totalCredit">0.00</td>
-                        </tr>
-                    </tfoot>
-                </table>
             </div>
         </div>
     </div>
@@ -215,16 +120,16 @@
         <div class="bg-white p-6 rounded shadow-lg w-full max-w-4xl max-h-[80vh] flex flex-col">
             <div class="flex justify-between items-center mb-4 border-b pb-2">
                 <h2 class="text-xl font-bold">Item Catalog</h2>
-                <button onclick="closeCatalog()" class="text-red-600 hover:text-red-800 font-bold text-2xl">&times;</button>
+                <button onclick="closeCatalog()" class="text-red-600 font-bold text-2xl">&times;</button>
             </div>
             <div class="overflow-y-auto flex-1">
                 <table class="w-full border-collapse border border-gray-300 text-sm">
                     <thead class="bg-gray-100 sticky top-0">
                         <tr>
-                            <th class="border border-gray-300 p-2 text-left">Material Description</th>
-                            <th class="border border-gray-300 p-2 text-left">Mat. Code</th>
-                            <th class="border border-gray-300 p-2 text-left">Unit</th>
-                            <th class="border border-gray-300 p-2 text-left">Category</th>
+                            <th class="border p-2 text-left">Material Description</th>
+                            <th class="border p-2 text-left">Mat. Code</th>
+                            <th class="border p-2 text-left">Unit</th>
+                            <th class="border p-2 text-left">Category</th>
                         </tr>
                     </thead>
                     <tbody id="catalogList"></tbody>
@@ -273,22 +178,20 @@
         <table class="w-full mb-6 border-collapse border border-black">
             <thead>
                 <tr class="bg-gray-100 border border-black text-left">
-                    <th class="p-2 border border-black w-10 text-center">Sl</th>
-                    <th class="p-2 border border-black w-20">Mat. Code</th>
-                    <th class="p-2 border border-black">Material Description</th>
-                    <th class="p-2 border border-black text-center w-12">Unit</th>
-                    <th class="p-2 border border-black text-center w-16">Qty</th>
-                    <th class="p-2 border border-black text-right w-20">Unit Price</th>
-                    <th class="p-2 border border-black text-right w-24">Amount</th>
+                    <th class="border border-black p-2 w-10 text-center">Sl</th>
+                    <th class="border border-black p-2 w-20">Mat. Code</th>
+                    <th class="border border-black p-2">Material Description</th>
+                    <th class="border border-black p-2 text-center w-12">Unit</th>
+                    <th class="border border-black p-2 text-center w-16">Qty</th>
+                    <th class="border border-black p-2 text-right w-20">Unit Price</th>
+                    <th class="border border-black p-2 text-right w-24">Amount</th>
                 </tr>
             </thead>
             <tbody id="p_items_body"></tbody>
         </table>
 
         <div class="flex justify-end items-end mt-8">
-            <div class="text-lg font-bold border-2 border-black p-2">
-                Grand Total: ₹<span id="p_grand_total"></span>
-            </div>
+            <div class="text-lg font-bold border-2 border-black p-2">Grand Total: ₹<span id="p_grand_total"></span></div>
         </div>
 
         <div class="mt-12 flex justify-between items-end">
@@ -298,8 +201,7 @@
                 <p class="italic text-gray-700">This is a computer generated invoice and doesn't need a signature.</p>
             </div>
             <div class="w-1/3 text-right text-sm">
-                <p>For <strong>Nazeer Fresh Food Market</strong></p>
-                <br><br><br>
+                <p>For <strong>Nazeer Fresh Food Market</strong></p><br><br><br>
                 <p class="border-t border-black inline-block pt-1">Authorised Signatory</p>
             </div>
         </div>
@@ -311,32 +213,14 @@
         const supabaseKey = 'sb_publishable_tlacY2KLpvy8YjOYJiCsEA_sP1qA6zS';
         const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        let globalCatalog = [];
-        let billToData = [];
-        let shipToData = [];
-        let currentPage = 1;
-        const limitPerPage = 10;
+        let globalCatalog = []; let billToData = []; let shipToData = [];
+        let currentPage = 1; const limitPerPage = 10;
 
         async function initApp() {
             await fetchAllBaseData();
             loadInvoices(1);
         }
 
-        // --- TAB SWITCHING ---
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active', 'bg-blue-600', 'text-white'));
-            
-            document.getElementById(`tab-${tabId}`).classList.add('active');
-            document.getElementById(`nav-${tabId}`).classList.add('active', 'bg-blue-600', 'text-white');
-
-            if(tabId === 'billto') renderCustomerTable('bill_to_customers', 'billToTableBody');
-            if(tabId === 'deliverto') renderCustomerTable('ship_to_customers', 'shipToTableBody');
-            if(tabId === 'cashbook') renderLedger('Cash', 'cashbookTableBody', 'totalCash');
-            if(tabId === 'creditbook') renderLedger('Credit', 'creditbookTableBody', 'totalCredit');
-        }
-
-        // --- FETCH BASE DATA (Customers & Catalog for Search) ---
         async function fetchAllBaseData() {
             const { data: catData } = await supabaseClient.from('catalog').select('*');
             globalCatalog = catData || [];
@@ -351,10 +235,9 @@
             document.getElementById('shipToSuggestions').innerHTML = shipToData.map(i => `<option value="${i.name}">`).join('');
         }
 
-        // --- AUTOFILL DATA ---
-        function autoFillItem(inputElement) {
-            const row = inputElement.closest('.item-row');
-            const match = globalCatalog.find(i => i.material_desc === inputElement.value.trim());
+        function autoFillItem(input) {
+            const row = input.closest('.item-row');
+            const match = globalCatalog.find(i => i.material_desc === input.value.trim());
             if (match) {
                 row.querySelector('.i-mcode').value = match.material_code || '';
                 row.querySelector('.i-cat').value = match.category || '';
@@ -371,7 +254,6 @@
             }
         }
 
-        // --- ITEM ROW CALCULATIONS ---
         function calculateRow(element) {
             const row = element.closest('.item-row');
             const qty = parseFloat(row.querySelector('.i-qty').value) || 0;
@@ -408,11 +290,9 @@
             document.getElementById('b_name').value = ''; document.getElementById('b_contact').value = ''; document.getElementById('b_address').value = '';
             document.getElementById('d_name').value = ''; document.getElementById('d_contact').value = ''; document.getElementById('d_address').value = '';
             document.getElementById('items-container').innerHTML = '';
-            addItemRow();
-            calculateGrandTotal();
+            addItemRow(); calculateGrandTotal();
         }
 
-        // --- SAVE AND PRINT ---
         async function saveAndPrint() {
             const bName = document.getElementById('b_name').value.trim();
             if(!bName) return alert("Please enter Bill To Name");
@@ -423,15 +303,7 @@
                 const name = row.querySelector('.i-name').value.trim();
                 if(name && (parseFloat(row.querySelector('.i-qty').value) || 0) > 0) {
                     let total = parseFloat(row.querySelector('.i-total').value) || 0;
-                    items.push({ 
-                        name, 
-                        mcode: row.querySelector('.i-mcode').value.trim(), 
-                        cat: row.querySelector('.i-cat').value.trim(), 
-                        unit: row.querySelector('.i-unit').value, 
-                        qty: parseFloat(row.querySelector('.i-qty').value) || 0, 
-                        price: parseFloat(row.querySelector('.i-price').value) || 0, 
-                        total 
-                    });
+                    items.push({ name, mcode: row.querySelector('.i-mcode').value.trim(), cat: row.querySelector('.i-cat').value.trim(), unit: row.querySelector('.i-unit').value, qty: parseFloat(row.querySelector('.i-qty').value) || 0, price: parseFloat(row.querySelector('.i-price').value) || 0, total });
                     totalAmount += total;
                 }
             });
@@ -448,31 +320,19 @@
                 const dAddress = document.getElementById('d_address').value || document.getElementById('b_address').value;
                 
                 let invNumber = "";
-
                 if(invoiceId) {
-                    // Updating Existing
-                    const { data } = await supabaseClient.from('invoices').update({
-                        bill_to_name: bName, bill_to_contact: document.getElementById('b_contact').value, bill_to_address: document.getElementById('b_address').value,
-                        deliver_to_name: dName, deliver_to_contact: dContact, deliver_to_address: dAddress, payment_mode: pMode, total_amount: totalAmount
-                    }).eq('id', invoiceId).select();
+                    const { data } = await supabaseClient.from('invoices').update({ bill_to_name: bName, bill_to_contact: document.getElementById('b_contact').value, bill_to_address: document.getElementById('b_address').value, deliver_to_name: dName, deliver_to_contact: dContact, deliver_to_address: dAddress, payment_mode: pMode, total_amount: totalAmount }).eq('id', invoiceId).select();
                     invNumber = data[0].invoice_number;
                     await supabaseClient.from('invoice_items').delete().eq('invoice_id', invoiceId);
                 } else {
-                    // Creating New
                     const { count } = await supabaseClient.from('invoices').select('*', { count: 'exact', head: true });
                     invNumber = String((count || 0) + 1).padStart(3, '0');
-                    const { data } = await supabaseClient.from('invoices').insert([{
-                        invoice_number: invNumber, bill_to_name: bName, bill_to_contact: document.getElementById('b_contact').value, bill_to_address: document.getElementById('b_address').value,
-                        deliver_to_name: dName, deliver_to_contact: dContact, deliver_to_address: dAddress, payment_mode: pMode, total_amount: totalAmount
-                    }]).select();
+                    const { data } = await supabaseClient.from('invoices').insert([{ invoice_number: invNumber, bill_to_name: bName, bill_to_contact: document.getElementById('b_contact').value, bill_to_address: document.getElementById('b_address').value, deliver_to_name: dName, deliver_to_contact: dContact, deliver_to_address: dAddress, payment_mode: pMode, total_amount: totalAmount }]).select();
                     invoiceId = data[0].id;
                 }
 
-                // Insert Items, update Catalog/Customers
                 for(let item of items) {
-                    await supabaseClient.from('invoice_items').insert([{
-                        invoice_id: invoiceId, material_desc: item.name, material_code: item.mcode, category: item.cat, unit: item.unit, quantity: item.qty, unit_price: item.price, total: item.total
-                    }]);
+                    await supabaseClient.from('invoice_items').insert([{ invoice_id: invoiceId, material_desc: item.name, material_code: item.mcode, category: item.cat, unit: item.unit, quantity: item.qty, unit_price: item.price, total: item.total }]);
                     await supabaseClient.from('catalog').upsert({ material_desc: item.name, material_code: item.mcode, category: item.cat, unit: item.unit }, { onConflict: 'material_desc' });
                 }
                 
@@ -483,12 +343,10 @@
                 setTimeout(() => window.location.reload(), 1500);
 
             } catch (err) {
-                console.error(err); alert("Error saving invoice.");
-                btn.innerText = "Save & Print Invoice"; btn.disabled = false;
+                console.error(err); alert("Error saving invoice."); btn.innerText = "Save & Print Invoice"; btn.disabled = false;
             }
         }
 
-        // --- PRINTING ---
         function triggerPrint(invNum, pMode, bName, bContact, bAddress, dName, dContact, dAddress, items, total) {
             document.getElementById('p_inv_no').innerText = invNum;
             document.getElementById('p_date').innerText = new Date().toLocaleDateString();
@@ -512,28 +370,22 @@
             window.print();
         }
 
-        // --- INVOICE LIST & EDITING ---
         async function loadInvoices(page) {
-            currentPage = page;
-            const offset = (currentPage - 1) * limitPerPage;
+            currentPage = page; const offset = (currentPage - 1) * limitPerPage;
             const tbody = document.getElementById('savedInvoicesList');
             const { data, count } = await supabaseClient.from('invoices').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(offset, offset + limitPerPage - 1);
-            
-            tbody.innerHTML = '';
-            data.forEach(inv => {
-                tbody.innerHTML += `
-                    <tr class="hover:bg-gray-50">
-                        <td class="border border-gray-300 p-2 font-bold">${inv.invoice_number}</td>
-                        <td class="border border-gray-300 p-2">${new Date(inv.created_at).toLocaleDateString()}</td>
-                        <td class="border border-gray-300 p-2">${inv.bill_to_name}</td>
-                        <td class="border border-gray-300 p-2">${inv.payment_mode}</td>
-                        <td class="border border-gray-300 p-2 text-right font-bold">₹${inv.total_amount.toFixed(2)}</td>
-                        <td class="border border-gray-300 p-2 text-center">
-                            <button onclick="editInvoice(${inv.id})" class="text-blue-600 hover:underline mr-2">✏️ Edit</button>
-                            <button onclick="reprintInvoice(${inv.id})" class="text-green-600 hover:underline">🖨️ Print</button>
-                        </td>
-                    </tr>`;
-            });
+            tbody.innerHTML = (data||[]).map(inv => `
+                <tr class="hover:bg-gray-50">
+                    <td class="border p-2 font-bold">${inv.invoice_number}</td>
+                    <td class="border p-2">${new Date(inv.created_at).toLocaleDateString()}</td>
+                    <td class="border p-2">${inv.bill_to_name}</td>
+                    <td class="border p-2">${inv.payment_mode}</td>
+                    <td class="border p-2 text-right font-bold">₹${inv.total_amount.toFixed(2)}</td>
+                    <td class="border p-2 text-center">
+                        <button onclick="editInvoice(${inv.id})" class="text-blue-600 hover:underline mr-2">✏️</button>
+                        <button onclick="reprintInvoice(${inv.id})" class="text-green-600 hover:underline">🖨️</button>
+                    </td>
+                </tr>`).join('');
             document.getElementById('btnPrev').disabled = (currentPage === 1);
             document.getElementById('btnNext').disabled = (offset + limitPerPage >= count);
             document.getElementById('pageIndicator').innerText = `Page ${currentPage}`;
@@ -544,8 +396,7 @@
             const { data: items } = await supabaseClient.from('invoice_items').select('*').eq('invoice_id', id);
             
             document.getElementById('editing_invoice_id').value = inv.id;
-            document.getElementById('invoiceFormTitle').innerHTML = `Editing Invoice: <span class="text-blue-600">#${inv.invoice_number}</span>`;
-            
+            document.getElementById('invoiceFormTitle').innerHTML = `Editing: <span class="text-blue-600">#${inv.invoice_number}</span>`;
             document.getElementById('b_name').value = inv.bill_to_name; document.getElementById('b_contact').value = inv.bill_to_contact; document.getElementById('b_address').value = inv.bill_to_address;
             document.getElementById('d_name').value = inv.deliver_to_name; document.getElementById('d_contact').value = inv.deliver_to_contact; document.getElementById('d_address').value = inv.deliver_to_address;
             document.getElementById('payment_mode').value = inv.payment_mode;
@@ -564,53 +415,24 @@
                 `;
                 container.appendChild(row);
             });
-            calculateGrandTotal();
-            window.scrollTo(0,0);
+            calculateGrandTotal(); window.scrollTo(0,0);
         }
 
         async function reprintInvoice(id) {
             const { data: inv } = await supabaseClient.from('invoices').select('*').eq('id', id).single();
             const { data: items } = await supabaseClient.from('invoice_items').select('*').eq('invoice_id', id);
-            
-            let formattedItems = items.map(i => ({ name: i.material_desc, mcode: i.material_code, unit: i.unit, qty: i.quantity, price: i.unit_price, total: i.total }));
-            triggerPrint(inv.invoice_number, inv.payment_mode, inv.bill_to_name, inv.bill_to_contact, inv.bill_to_address, inv.deliver_to_name, inv.deliver_to_contact, inv.deliver_to_address, formattedItems, inv.total_amount);
+            let fItems = items.map(i => ({ name: i.material_desc, mcode: i.material_code, unit: i.unit, qty: i.quantity, price: i.unit_price, total: i.total }));
+            triggerPrint(inv.invoice_number, inv.payment_mode, inv.bill_to_name, inv.bill_to_contact, inv.bill_to_address, inv.deliver_to_name, inv.deliver_to_contact, inv.deliver_to_address, fItems, inv.total_amount);
         }
 
         function prevPage() { if (currentPage > 1) loadInvoices(currentPage - 1); }
         function nextPage() { loadInvoices(currentPage + 1); }
 
-        // --- DIRECTORIES & LEDGERS ---
-        async function renderCustomerTable(table, bodyId) {
-            const tbody = document.getElementById(bodyId); tbody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
-            const { data } = await supabaseClient.from(table).select('*').order('name');
-            tbody.innerHTML = (data || []).map(c => `<tr><td class="border p-2">${c.name}</td><td class="border p-2">${c.contact||'-'}</td><td class="border p-2">${c.address||'-'}</td></tr>`).join('');
-        }
-
-        async function renderLedger(mode, bodyId, totalId) {
-            const tbody = document.getElementById(bodyId); tbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
-            const { data } = await supabaseClient.from('invoices').select('*').eq('payment_mode', mode).order('created_at', { ascending: false });
-            
-            let total = 0;
-            tbody.innerHTML = (data || []).map(inv => {
-                total += inv.total_amount;
-                return `<tr><td class="border p-2">${new Date(inv.created_at).toLocaleDateString()}</td><td class="border p-2 font-bold">${inv.invoice_number}</td><td class="border p-2">${inv.bill_to_name}</td><td class="border p-2 text-right">₹${inv.total_amount.toFixed(2)}</td></tr>`;
-            }).join('');
-            document.getElementById(totalId).innerText = total.toFixed(2);
-        }
-
-        // --- CATALOG MANAGEMENT ---
         async function openCatalog() {
             document.getElementById('catalogModal').classList.remove('hidden');
             const tbody = document.getElementById('catalogList');
             const { data } = await supabaseClient.from('catalog').select('*').order('material_desc');
-            tbody.innerHTML = (data || []).map(item => `
-                <tr class="hover:bg-gray-50">
-                    <td class="border p-2 font-medium">${item.material_desc}</td>
-                    <td class="border p-2 text-gray-600">${item.material_code || '-'}</td>
-                    <td class="border p-2 text-gray-600">${item.unit || '-'}</td>
-                    <td class="border p-2 text-gray-600">${item.category || '-'}</td>
-                </tr>
-            `).join('');
+            tbody.innerHTML = (data || []).map(item => `<tr class="hover:bg-gray-50"><td class="border p-2 font-medium">${item.material_desc}</td><td class="border p-2">${item.material_code || '-'}</td><td class="border p-2">${item.unit || '-'}</td><td class="border p-2">${item.category || '-'}</td></tr>`).join('');
         }
         function closeCatalog() { document.getElementById('catalogModal').classList.add('hidden'); fetchAllBaseData(); }
     </script>
