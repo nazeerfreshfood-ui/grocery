@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material Catalogue - Nazeer Fresh Food</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100 flex h-screen" onload="loadData()">
+    <!-- Sidebar Navigation -->
+    <div class="w-64 bg-gray-900 text-white flex flex-col h-full shrink-0">
+        <div class="p-4 text-xl font-bold border-b border-gray-700">Nazeer Fresh Food</div>
+        <nav class="flex-1 p-4 space-y-2">
+            <a href="index.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Billing</a>
+            <a href="material-catalogue.html" class="block p-2 bg-blue-600 rounded text-white">Material Catalogue</a>
+            <a href="bill-to.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Bill To</a>
+            <a href="deliver-to.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Deliver To</a>
+            <a href="cashbook.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Cashbook</a>
+            <a href="credit-book.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Credit Book</a>
+        </nav>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col p-6 overflow-y-auto">
+        <h2 class="text-2xl font-bold mb-6">Material Catalogue</h2>
+        
+        <div class="bg-white p-6 rounded shadow">
+            
+            <!-- Quick Add Material Form -->
+            <div class="flex gap-2 mb-6 bg-gray-50 p-4 border rounded items-center shadow-sm">
+                <span class="font-bold mr-2 text-sm">Add Material:</span>
+                <input type="text" id="newDesc" placeholder="Material Description (Required)" class="border p-2 rounded flex-1 text-sm">
+                <input type="text" id="newCode" placeholder="Mat. Code" class="border p-2 rounded w-32 text-sm">
+                <select id="newUnit" class="border p-2 rounded w-24 text-sm">
+                    <option value="Kg">Kg</option>
+                    <option value="Ltr">Ltr</option>
+                    <option value="Num">Num</option>
+                </select>
+                <input type="text" id="newCat" placeholder="Category" class="border p-2 rounded w-40 text-sm">
+                <button onclick="addMaterial()" class="bg-blue-600 text-white px-6 py-2 rounded shadow hover:bg-blue-700 text-sm font-bold">Save</button>
+            </div>
+
+            <!-- Material Table -->
+            <table class="w-full border-collapse border border-gray-300">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="border p-2 text-left">Material Description</th>
+                        <th class="border p-2 text-left w-32">Mat. Code</th>
+                        <th class="border p-2 text-left w-24">Unit</th>
+                        <th class="border p-2 text-left w-48">Category</th>
+                        <th class="border p-2 text-center w-40">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="dataTable">
+                    <tr><td colspan="5" class="text-center p-4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://tmrulrlwyspnlwodrjpa.supabase.co'; 
+        const supabaseKey = 'sb_publishable_tlacY2KLpvy8YjOYJiCsEA_sP1qA6zS';
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // --- LOAD DATA ---
+        async function loadData() {
+            const { data, error } = await supabaseClient.from('catalog').select('*').order('material_desc');
+            const tbody = document.getElementById('dataTable');
+            
+            if (error) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-red-600">Error loading data.</td></tr>';
+                console.error(error);
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-gray-500">No materials found. Add one above.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(m => {
+                // Escape quotes for the onclick function arguments
+                const safeDesc = (m.material_desc || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                const safeCode = (m.material_code || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                const safeUnit = (m.unit || 'Kg').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                const safeCat = (m.category || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="border p-2 font-medium">${m.material_desc}</td>
+                        <td class="border p-2">${m.material_code || '-'}</td>
+                        <td class="border p-2">${m.unit || 'Kg'}</td>
+                        <td class="border p-2">${m.category || '-'}</td>
+                        <td class="border p-2 text-center">
+                            <button onclick="editMaterial(${m.id}, '${safeDesc}', '${safeCode}', '${safeUnit}', '${safeCat}')" class="text-blue-600 hover:underline mr-3 font-semibold">Edit</button>
+                            <button onclick="deleteMaterial(${m.id})" class="text-red-600 hover:underline font-semibold">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // --- ADD MATERIAL ---
+        async function addMaterial() {
+            const desc = document.getElementById('newDesc').value.trim();
+            const code = document.getElementById('newCode').value.trim();
+            const unit = document.getElementById('newUnit').value;
+            const cat = document.getElementById('newCat').value.trim();
+
+            if (!desc) {
+                alert("Material Description is required!");
+                return;
+            }
+
+            const { error } = await supabaseClient.from('catalog').insert([{
+                material_desc: desc,
+                material_code: code,
+                unit: unit,
+                category: cat
+            }]);
+
+            if (error) {
+                console.error(error);
+                alert("Error adding material. A material with this description might already exist.");
+            } else {
+                // Clear inputs and reload table
+                document.getElementById('newDesc').value = '';
+                document.getElementById('newCode').value = '';
+                document.getElementById('newUnit').value = 'Kg';
+                document.getElementById('newCat').value = '';
+                loadData();
+            }
+        }
+
+        // --- EDIT MATERIAL ---
+        async function editMaterial(id, currentDesc, currentCode, currentUnit, currentCat) {
+            const newDesc = prompt("Edit Material Description:", currentDesc);
+            if (newDesc === null) return; 
+
+            const newCode = prompt("Edit Material Code:", currentCode);
+            if (newCode === null) return;
+
+            const newUnit = prompt("Edit Unit (Kg, Ltr, Num):", currentUnit);
+            if (newUnit === null) return;
+
+            const newCat = prompt("Edit Category:", currentCat);
+            if (newCat === null) return;
+
+            if (newDesc.trim() === '') {
+                alert("Material Description cannot be empty.");
+                return;
+            }
+
+            const { error } = await supabaseClient.from('catalog').update({ 
+                material_desc: newDesc.trim(), 
+                material_code: newCode.trim(),
+                unit: newUnit.trim(),
+                category: newCat.trim() 
+            }).eq('id', id);
+
+            if (error) {
+                console.error(error);
+                alert("Error updating material.");
+            } else {
+                loadData();
+            }
+        }
+
+        // --- DELETE MATERIAL ---
+        async function deleteMaterial(id) {
+            if (!confirm("Are you sure you want to delete this material?")) {
+                return;
+            }
+
+            const { error } = await supabaseClient.from('catalog').delete().eq('id', id);
+
+            if (error) {
+                console.error(error);
+                alert("Error deleting material.");
+            } else {
+                loadData();
+            }
+        }
+    </script>
+</body>
+</html>
