@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nazeer Fresh Food Market - Billing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Print Styles - Hides UI, shows only the invoice */
+        @media print {
+            body * { visibility: hidden; }
+            #print-section, #print-section * { visibility: visible; }
+            #print-section { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex h-screen">
+
+    <!-- Sidebar Navigation -->
+    <div class="w-64 bg-gray-900 text-white flex flex-col no-print h-full">
+        <div class="p-4 text-xl font-bold border-b border-gray-700">Nazeer Fresh Food</div>
+        <nav class="flex-1 p-4 space-y-2">
+            <a href="#" class="block p-2 bg-blue-600 rounded">Billing</a>
+            <a href="#" class="block p-2 hover:bg-gray-700 rounded text-gray-400 cursor-not-allowed">Bill To (WIP)</a>
+            <a href="#" class="block p-2 hover:bg-gray-700 rounded text-gray-400 cursor-not-allowed">Deliver To (WIP)</a>
+            <a href="#" class="block p-2 hover:bg-gray-700 rounded text-gray-400 cursor-not-allowed">Vendors (WIP)</a>
+            <a href="#" class="block p-2 hover:bg-gray-700 rounded text-gray-400 cursor-not-allowed">Cashbook (WIP)</a>
+            <a href="#" class="block p-2 hover:bg-gray-700 rounded text-gray-400 cursor-not-allowed">Credit Book (WIP)</a>
+        </nav>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col h-full overflow-y-auto no-print">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Create Invoice</h2>
+                <button class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700">Item Catalog</button>
+            </div>
+
+            <!-- Customer Details Form -->
+            <div class="bg-white p-6 rounded shadow mb-6 flex gap-6">
+                <!-- Bill To -->
+                <div class="flex-1">
+                    <h3 class="font-bold border-b pb-2 mb-4">Bill To</h3>
+                    <input type="text" id="b_name" placeholder="Customer Name" class="w-full border p-2 mb-2 rounded" required>
+                    <input type="text" id="b_contact" placeholder="Contact Number" class="w-full border p-2 mb-2 rounded" required>
+                    <textarea id="b_address" placeholder="Address" class="w-full border p-2 rounded"></textarea>
+                </div>
+                <!-- Deliver To -->
+                <div class="flex-1">
+                    <h3 class="font-bold border-b pb-2 mb-4">Deliver To (Leave blank if same)</h3>
+                    <input type="text" id="d_name" placeholder="Name" class="w-full border p-2 mb-2 rounded">
+                    <input type="text" id="d_contact" placeholder="Contact Number" class="w-full border p-2 mb-2 rounded">
+                    <textarea id="d_address" placeholder="Address" class="w-full border p-2 rounded"></textarea>
+                </div>
+            </div>
+
+            <!-- Items Section -->
+            <div class="bg-white p-6 rounded shadow mb-6">
+                <h3 class="font-bold border-b pb-2 mb-4">Items</h3>
+                <div id="items-container">
+                    <div class="flex gap-2 mb-2 item-row">
+                        <input type="text" placeholder="Item Name" class="border p-2 rounded flex-1 i-name">
+                        <input type="text" placeholder="Category" class="border p-2 rounded w-32 i-cat">
+                        <input type="number" placeholder="Qty" class="border p-2 rounded w-24 i-qty" oninput="calculateRow(this)">
+                        <input type="number" placeholder="Price" class="border p-2 rounded w-24 i-price" oninput="calculateRow(this)">
+                        <input type="text" placeholder="Total" class="border p-2 rounded w-24 i-total bg-gray-100" readonly>
+                    </div>
+                </div>
+                <button onclick="addItemRow()" class="text-blue-600 font-bold mt-2">+ Add Another Item</button>
+            </div>
+
+            <!-- Payment & Actions -->
+            <div class="bg-white p-6 rounded shadow flex justify-between items-center">
+                <div>
+                    <label class="font-bold mr-2">Payment Mode:</label>
+                    <select id="payment_mode" class="border p-2 rounded">
+                        <option value="Cash">Cash (To Cashbook)</option>
+                        <option value="Credit">Credit (To Credit Book)</option>
+                    </select>
+                </div>
+                <div class="text-xl font-bold">Grand Total: ₹<span id="grand_total">0.00</span></div>
+                <button onclick="saveAndPrint()" class="bg-green-600 text-white px-6 py-3 rounded shadow hover:bg-green-700 font-bold">Save & Print Invoice</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- INVOICE PRINT TEMPLATE (Hidden from normal UI) -->
+    <div id="print-section" class="bg-white p-8 hidden">
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-extrabold uppercase">Nazeer Fresh Food Market</h1>
+            <p class="text-sm">5/584/ H.No 583/5, Rowanfond, Aquem Baixo, Margao</p>
+            <p class="text-sm font-bold">GSTIN: 30HDYPK7365C1Z7 | Contact No: +919529816206</p>
+        </div>
+        <hr class="border-black mb-4">
+        
+        <!-- Info -->
+        <div class="flex justify-between mb-6">
+            <div>
+                <p><strong>Invoice No:</strong> <span id="p_inv_no"></span></p>
+                <p><strong>Date:</strong> <span id="p_date"></span></p>
+                <p><strong>Payment Mode:</strong> <span id="p_mode"></span></p>
+            </div>
+            <div class="text-right">
+                <p><strong>Bill To:</strong> <span id="p_b_name"></span></p>
+                <p><span id="p_b_contact"></span></p>
+                <p class="text-sm w-48 float-right text-right"><span id="p_b_address"></span></p>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <table class="w-full mb-6 border-collapse border border-black">
+            <thead>
+                <tr class="bg-gray-100 border border-black text-left">
+                    <th class="p-2 border border-black">Sl No.</th>
+                    <th class="p-2 border border-black">Item Description</th>
+                    <th class="p-2 border border-black">Qty</th>
+                    <th class="p-2 border border-black">Price</th>
+                    <th class="p-2 border border-black">Amount</th>
+                </tr>
+            </thead>
+            <tbody id="p_items_body">
+                <!-- Dynamically populated -->
+            </tbody>
+        </table>
+
+        <!-- Totals & Terms -->
+        <div class="flex justify-between items-end mt-12">
+            <div>
+                <p id="p_pending_dues" class="font-bold text-red-600 hidden">Pending Dues Applicable</p>
+            </div>
+            <div class="text-xl font-bold">
+                Grand Total: ₹<span id="p_grand_total"></span>
+            </div>
+        </div>
+
+        <div class="mt-16 flex justify-between items-end">
+            <div class="w-1/3 text-center text-xs">
+                <p class="font-bold">Terms & Conditions:</p>
+                <p>Items sold will not be taken back.</p>
+                <br>
+                <p>5/584/ H.No 583/5, Rowanfond, Aquem Baixo, Margao</p>
+                <p><strong>This is a computer generated invoice and doesn't need signature.</strong></p>
+            </div>
+            <div class="w-1/3 text-right">
+                <p>For <strong>Nazeer Fresh Food Market</strong></p>
+                <br><br><br>
+                <p>Authorised Signatory</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUPABASE SCRIPT & LOGIC -->
+    <script>
+        // --- INITIALIZE SUPABASE ---
+        // REPLACE THESE TWO LINES WITH YOUR ACTUAL KEYS!
+        const supabaseUrl = 'YOUR_SUPABASE_URL'; 
+        const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Calculate Row Totals
+        function calculateRow(element) {
+            const row = element.closest('.item-row');
+            const qty = parseFloat(row.querySelector('.i-qty').value) || 0;
+            const price = parseFloat(row.querySelector('.i-price').value) || 0;
+            row.querySelector('.i-total').value = (qty * price).toFixed(2);
+            calculateGrandTotal();
+        }
+
+        function calculateGrandTotal() {
+            let grand = 0;
+            document.querySelectorAll('.i-total').forEach(input => {
+                grand += parseFloat(input.value) || 0;
+            });
+            document.getElementById('grand_total').innerText = grand.toFixed(2);
+        }
+
+        // Add extra rows in the billing form
+        function addItemRow() {
+            const container = document.getElementById('items-container');
+            const newRow = document.createElement('div');
+            newRow.className = 'flex gap-2 mb-2 item-row';
+            newRow.innerHTML = `
+                <input type="text" placeholder="Item Name" class="border p-2 rounded flex-1 i-name">
+                <input type="text" placeholder="Category" class="border p-2 rounded w-32 i-cat">
+                <input type="number" placeholder="Qty" class="border p-2 rounded w-24 i-qty" oninput="calculateRow(this)">
+                <input type="number" placeholder="Price" class="border p-2 rounded w-24 i-price" oninput="calculateRow(this)">
+                <input type="text" placeholder="Total" class="border p-2 rounded w-24 i-total bg-gray-100" readonly>
+            `;
+            container.appendChild(newRow);
+        }
+
+        // Main Save and Print function
+        async function saveAndPrint() {
+            const bName = document.getElementById('b_name').value;
+            if(!bName) return alert("Please enter Bill To Name");
+
+            const itemsRows = document.querySelectorAll('.item-row');
+            let items = [];
+            let totalAmount = 0;
+
+            itemsRows.forEach(row => {
+                const name = row.querySelector('.i-name').value;
+                const cat = row.querySelector('.i-cat').value;
+                const qty = parseFloat(row.querySelector('.i-qty').value) || 0;
+                const price = parseFloat(row.querySelector('.i-price').value) || 0;
+                const total = parseFloat(row.querySelector('.i-total').value) || 0;
+                if(name && qty > 0) {
+                    items.push({ name, cat, qty, price, total });
+                    totalAmount += total;
+                }
+            });
+
+            if(items.length === 0) return alert("Please add at least one item.");
+
+            // 1. Get the next invoice number (Starting 001)
+            const { count, error: countError } = await supabase
+                .from('invoices')
+                .select('*', { count: 'exact', head: true });
+            
+            let invNumInt = (count || 0) + 1;
+            let invNumber = String(invNumInt).padStart(3, '0');
+
+            const paymentMode = document.getElementById('payment_mode').value;
+
+            // 2. Insert Invoice to Supabase
+            const { data: invData, error: invError } = await supabase.from('invoices').insert([{
+                invoice_number: invNumber,
+                bill_to_name: bName,
+                bill_to_contact: document.getElementById('b_contact').value,
+                bill_to_address: document.getElementById('b_address').value,
+                deliver_to_name: document.getElementById('d_name').value,
+                deliver_to_contact: document.getElementById('d_contact').value,
+                deliver_to_address: document.getElementById('d_address').value,
+                payment_mode: paymentMode,
+                total_amount: totalAmount
+            }]).select();
+
+            if(invError) {
+                console.error(invError);
+                return alert("Error saving invoice!");
+            }
+
+            const invoiceId = invData[0].id;
+
+            // 3. Insert Items and update catalog
+            for(let item of items) {
+                // Insert into invoice_items
+                await supabase.from('invoice_items').insert([{
+                    invoice_id: invoiceId,
+                    item_name: item.name,
+                    category: item.cat,
+                    quantity: item.qty,
+                    price: item.price,
+                    total: item.total
+                }]);
+
+                // Update Catalog (ignore error if name already exists due to UNIQUE constraint)
+                await supabase.from('catalog').insert([{
+                    name: item.name,
+                    category: item.cat
+                }]).select();
+            }
+
+            // 4. Fill Print Template
+            document.getElementById('p_inv_no').innerText = invNumber;
+            document.getElementById('p_date').innerText = new Date().toLocaleDateString();
+            document.getElementById('p_mode').innerText = paymentMode;
+            document.getElementById('p_b_name').innerText = bName;
+            document.getElementById('p_b_contact').innerText = document.getElementById('b_contact').value;
+            document.getElementById('p_b_address').innerText = document.getElementById('b_address').value;
+            
+            if(paymentMode === 'Credit') {
+                document.getElementById('p_pending_dues').style.display = 'block';
+            } else {
+                document.getElementById('p_pending_dues').style.display = 'none';
+            }
+
+            const pTbody = document.getElementById('p_items_body');
+            pTbody.innerHTML = '';
+            items.forEach((item, index) => {
+                pTbody.innerHTML += `
+                    <tr>
+                        <td class="p-2 border border-black">${index + 1}</td>
+                        <td class="p-2 border border-black">${item.name}</td>
+                        <td class="p-2 border border-black">${item.qty}</td>
+                        <td class="p-2 border border-black">₹${item.price.toFixed(2)}</td>
+                        <td class="p-2 border border-black">₹${item.total.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('p_grand_total').innerText = totalAmount.toFixed(2);
+
+            // 5. Trigger Print
+            window.print();
+
+            // Refresh page to clear form after print
+            setTimeout(() => { window.location.reload(); }, 1000);
+        }
+    </script>
+</body>
+</html>
