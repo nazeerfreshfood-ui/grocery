@@ -13,11 +13,19 @@
             body { background-color: white; margin: 0; padding: 0; }
         }
         
-        /* Sidebar transition styles */
+        /* Sidebar transition styles & Mobile Overlay */
         #sidebar {
             transition: width 0.3s ease, opacity 0.3s ease;
             overflow-x: hidden;
             white-space: nowrap;
+            position: absolute;
+            z-index: 50;
+            height: 100%;
+        }
+        @media (min-width: 768px) {
+            #sidebar {
+                position: relative;
+            }
         }
         #sidebar.collapsed {
             width: 0 !important;
@@ -26,38 +34,46 @@
             padding-right: 0;
             border: none;
         }
+
+        /* Mobile-friendly item row styling */
+        .item-row-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        @media (min-width: 768px) {
+            .item-row-grid {
+                display: flex;
+                gap: 0.5rem;
+            }
+        }
     </style>
 </head>
-<body class="bg-gray-100 flex h-screen" onload="initApp()">
+<body class="bg-gray-100 flex h-screen overflow-hidden" onload="initApp()">
 
     <!-- Sidebar Navigation -->
-    <div id="sidebar" class="w-64 bg-gray-900 text-white flex flex-col no-print h-full shrink-0" onmouseenter="clearSidebarTimer()" onmouseleave="resetSidebarTimer()">
+    <div id="sidebar" class="w-64 bg-gray-900 text-white flex flex-col no-print shrink-0 shadow-2xl md:shadow-none" onmouseenter="clearSidebarTimer()" onmouseleave="resetSidebarTimer()">
         <div class="p-4 text-xl font-bold border-b border-gray-700 flex justify-between items-center">
             <span>Nazeer Fresh Food</span>
-            <button onclick="toggleSidebar()" class="text-gray-400 hover:text-white md:hidden">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <button onclick="toggleSidebar()" class="text-gray-400 hover:text-white md:hidden p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
         </div>
         <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
-            <a href="index.html" class="block p-2 bg-blue-600 rounded text-white">Billing</a>
-            <a href="material-catalogue.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Material Catalogue</a>
-            <a href="customer.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Customer</a>
-            <a href="cashbook.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Cashbook</a>
-            <a href="credit-book.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Credit Book</a>
-            
-            <!-- Admin Only Tab -->
-            <a href="users.html" class="admin-only hidden p-2 hover:bg-gray-700 rounded text-red-400 font-bold border border-red-900 mt-4">
-                Users (Admin)
-            </a>
+            <a href="index.html" class="block p-3 md:p-2 bg-blue-600 rounded text-white font-medium shadow-sm">Billing</a>
+            <a href="material-catalogue.html" class="block p-3 md:p-2 hover:bg-gray-700 rounded text-gray-300 transition-colors">Material Catalogue</a>
+            <a href="customer.html" class="block p-3 md:p-2 hover:bg-gray-700 rounded text-gray-300 transition-colors">Customer</a>
+            <a href="cashbook.html" class="block p-3 md:p-2 hover:bg-gray-700 rounded text-gray-300 transition-colors">Cashbook</a>
+            <a href="credit-book.html" class="block p-3 md:p-2 hover:bg-gray-700 rounded text-gray-300 transition-colors">Credit Book</a>
         </nav>
         
         <!-- User & Logout Section -->
         <div class="p-4 border-t border-gray-700 flex justify-between items-center bg-gray-800">
-            <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center font-bold text-sm" id="userAvatar">U</div>
-                <div class="text-sm font-semibold truncate w-24" id="userNameDisplay">Loading...</div>
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-gray-600 flex items-center justify-center font-bold text-sm shadow-inner" id="userAvatar">U</div>
+                <div class="text-sm font-semibold truncate w-24" id="userNameDisplay">User</div>
             </div>
-            <button onclick="logOut()" class="text-gray-400 hover:text-red-500 transition-colors" title="Logout">
+            <button onclick="logOut()" class="text-gray-400 hover:text-red-500 transition-colors p-2 rounded hover:bg-gray-700" title="Logout">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                     <polyline points="16 17 21 12 16 7"></polyline>
@@ -68,71 +84,81 @@
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col h-full overflow-y-auto no-print">
-        <div class="p-6 w-full">
-            <div class="flex justify-between items-center mb-6">
-                <div class="flex items-center gap-4">
-                    <button onclick="toggleSidebar()" class="bg-gray-200 p-2 rounded hover:bg-gray-300 text-gray-700" title="Toggle Sidebar">
+    <div class="flex-1 flex flex-col h-full overflow-y-auto no-print w-full">
+        <div class="p-4 md:p-6 w-full max-w-7xl mx-auto">
+            
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <button onclick="toggleSidebar()" class="bg-white border p-2 rounded shadow-sm hover:bg-gray-50 text-gray-700" title="Toggle Menu">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                     </button>
-                    <h2 class="text-2xl font-bold" id="invoiceFormTitle">Create Invoice</h2>
+                    <h2 class="text-xl md:text-2xl font-bold text-gray-800" id="invoiceFormTitle">Create Invoice</h2>
                 </div>
-                <div>
-                    <button onclick="clearForm()" class="bg-gray-500 text-white px-4 py-2 rounded shadow hover:bg-gray-600 mr-2">New Form</button>
-                    <button onclick="window.location.href='material-catalogue.html'" class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700">Material Catalogue</button>
+                <div class="w-full sm:w-auto">
+                    <button onclick="window.location.href='material-catalogue.html'" class="w-full sm:w-auto bg-indigo-600 text-white px-5 py-2.5 rounded shadow hover:bg-indigo-700 font-medium transition-colors">Manage Catalogue</button>
                 </div>
             </div>
 
-            <!-- Customer Details Form -->
+            <!-- Datalists for Autocomplete -->
             <datalist id="billToSuggestions"></datalist>
             <datalist id="shipToSuggestions"></datalist>
             <input type="hidden" id="editing_invoice_id" value="">
 
-            <div class="bg-white p-6 rounded shadow mb-6 flex gap-6">
+            <!-- Customer Details Form -->
+            <div class="bg-white p-5 md:p-6 rounded-lg shadow-sm border border-gray-200 mb-6 flex flex-col md:flex-row gap-6">
                 <div class="flex-1">
-                    <h3 class="font-bold border-b pb-2 mb-4">Customer Details (Bill To)</h3>
-                    <input type="text" list="billToSuggestions" id="b_name" placeholder="Customer Name" class="w-full border p-2 mb-2 rounded" onchange="autoFillCustomer('b')" required>
-                    <input type="text" id="b_contact" placeholder="Contact Number" class="w-full border p-2 mb-2 rounded" required>
-                    <textarea id="b_address" placeholder="Address" class="w-full border p-2 rounded"></textarea>
+                    <h3 class="font-bold text-gray-800 border-b pb-2 mb-4">Customer Details (Bill To)</h3>
+                    <input type="text" list="billToSuggestions" id="b_name" placeholder="Customer Name" class="w-full border border-gray-300 p-2.5 mb-3 rounded focus:ring-2 focus:ring-blue-500 outline-none" onchange="autoFillCustomer('b')" required>
+                    <input type="tel" id="b_contact" placeholder="Contact Number" class="w-full border border-gray-300 p-2.5 mb-3 rounded focus:ring-2 focus:ring-blue-500 outline-none" required>
+                    <textarea id="b_address" placeholder="Billing Address" class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-blue-500 outline-none rows="2"></textarea>
                 </div>
                 <div class="flex-1">
-                    <h3 class="font-bold border-b pb-2 mb-4">Deliver To (Optional)</h3>
-                    <input type="text" list="shipToSuggestions" id="d_name" placeholder="Name" class="w-full border p-2 mb-2 rounded" onchange="autoFillCustomer('d')">
-                    <input type="text" id="d_contact" placeholder="Contact Number" class="w-full border p-2 mb-2 rounded">
-                    <textarea id="d_address" placeholder="Address" class="w-full border p-2 rounded"></textarea>
+                    <h3 class="font-bold text-gray-800 border-b pb-2 mb-4">Deliver To (Optional)</h3>
+                    <input type="text" list="shipToSuggestions" id="d_name" placeholder="Receiver's Name" class="w-full border border-gray-300 p-2.5 mb-3 rounded focus:ring-2 focus:ring-blue-500 outline-none" onchange="autoFillCustomer('d')">
+                    <input type="tel" id="d_contact" placeholder="Contact Number" class="w-full border border-gray-300 p-2.5 mb-3 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                    <textarea id="d_address" placeholder="Delivery Address" class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-blue-500 outline-none rows="2"></textarea>
                 </div>
             </div>
 
             <!-- Items Section -->
-            <div class="bg-white p-6 rounded shadow mb-6">
-                <h3 class="font-bold border-b pb-2 mb-4">Materials</h3>
+            <div class="bg-white p-5 md:p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+                <h3 class="font-bold text-gray-800 border-b pb-2 mb-4">Materials</h3>
                 <datalist id="catalogSuggestions"></datalist>
+                
                 <div id="items-container">
-                    <div class="flex gap-2 mb-2 item-row">
-                        <input type="text" list="catalogSuggestions" placeholder="Material Description" class="border p-2 rounded flex-1 i-name" onchange="autoFillItem(this)">
-                        <input type="text" placeholder="Mat. Code" class="border p-2 rounded w-24 i-mcode">
-                        <input type="text" placeholder="Category" class="border p-2 rounded w-24 i-cat">
-                        <select class="border p-2 rounded w-20 i-unit"><option value="Kg">Kg</option><option value="Ltr">Ltr</option><option value="Num">Num</option></select>
-                        <input type="number" placeholder="Qty" class="border p-2 rounded w-20 i-qty" oninput="calculateRow(this)">
-                        <input type="number" placeholder="Unit Price" class="border p-2 rounded w-24 i-price" oninput="calculateRow(this)">
-                        <input type="text" placeholder="Total" class="border p-2 rounded w-24 i-total bg-gray-100" readonly>
+                    <!-- Default Item Row (Mobile Grid / Desktop Flex) -->
+                    <div class="item-row-grid mb-4 item-row bg-gray-50 md:bg-transparent p-4 md:p-0 rounded-lg border border-gray-200 md:border-0">
+                        <div class="col-span-2 md:flex-1">
+                            <input type="text" list="catalogSuggestions" placeholder="Material Description ▾ (Tap to search/select)" class="border border-gray-300 p-2.5 rounded w-full i-name focus:ring-2 focus:ring-blue-500 outline-none" onchange="autoFillItem(this)">
+                        </div>
+                        <input type="text" placeholder="Mat. Code" class="border border-gray-300 p-2.5 rounded w-full md:w-24 i-mcode focus:ring-2 focus:ring-blue-500 outline-none">
+                        <input type="text" placeholder="Category" class="border border-gray-300 p-2.5 rounded w-full md:w-28 i-cat focus:ring-2 focus:ring-blue-500 outline-none">
+                        <select class="border border-gray-300 p-2.5 rounded w-full md:w-20 i-unit focus:ring-2 focus:ring-blue-500 outline-none"><option value="Kg">Kg</option><option value="Ltr">Ltr</option><option value="Num">Num</option></select>
+                        <input type="number" placeholder="Qty" class="border border-gray-300 p-2.5 rounded w-full md:w-20 i-qty focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculateRow(this)">
+                        <input type="number" placeholder="Price" class="border border-gray-300 p-2.5 rounded w-full md:w-24 i-price focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculateRow(this)">
+                        <div class="col-span-2 md:col-span-1 md:w-28">
+                            <input type="text" placeholder="Total" class="border border-gray-300 p-2.5 rounded w-full i-total bg-gray-200 font-bold text-gray-700 outline-none" readonly>
+                        </div>
                     </div>
                 </div>
-                <button onclick="addItemRow()" class="text-blue-600 font-bold mt-2">+ Add Material</button>
+                
+                <button onclick="addItemRow()" class="text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-md font-bold mt-2 w-full md:w-auto transition-colors border border-blue-200 shadow-sm">+ Add Another Material</button>
                 
                 <!-- Remark Section -->
-                <div class="mt-4 pt-4 border-t">
-                    <label class="font-bold mb-2 block">Invoice Remark (Will be printed):</label>
-                    <input type="text" id="invoice_remark" placeholder="e.g. Paid in advance, Special discount applied, etc." class="w-full border p-2 rounded">
+                <div class="mt-6 pt-5 border-t border-gray-200">
+                    <label class="font-bold text-gray-700 mb-2 block">Invoice Remark (Will be printed):</label>
+                    <input type="text" id="invoice_remark" placeholder="e.g. Paid in advance, Special discount applied, etc." class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
             </div>
 
             <!-- Payment & Actions -->
-            <div class="bg-white p-6 rounded shadow flex justify-between items-center mb-10 flex-wrap gap-4">
-                <div class="flex items-center flex-wrap gap-4">
-                    <div>
-                        <label class="font-bold mr-2">Payment Mode:</label>
-                        <select id="payment_mode" class="border p-2 rounded bg-gray-50" onchange="toggleSplitPayment()">
+            <div class="bg-white p-5 md:p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-stretch md:items-center mb-10 gap-6">
+                
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
+                    <div class="w-full sm:w-auto">
+                        <label class="font-bold text-gray-700 mb-1 block sm:inline sm:mr-2">Payment Mode:</label>
+                        <select id="payment_mode" class="border border-gray-300 p-2.5 rounded bg-gray-50 w-full sm:w-auto outline-none focus:ring-2 focus:ring-blue-500" onchange="toggleSplitPayment()">
                             <option value="Cash">Cash (To Cashbook)</option>
                             <option value="Credit">Credit (To Credit Book)</option>
                             <option value="Split">Split (Cash + Credit)</option>
@@ -140,48 +166,59 @@
                     </div>
                     
                     <!-- Split Payment Fields (Hidden by default) -->
-                    <div id="split_fields" class="hidden flex items-center gap-2 bg-blue-50 p-2 rounded border border-blue-200">
-                        <div class="text-sm font-bold text-blue-800">Cash:</div>
-                        <input type="number" id="split_cash" placeholder="₹" class="border p-1 rounded w-20 text-sm" oninput="calculateSplitAmount()">
-                        <div class="text-sm font-bold text-red-800 ml-2">Credit:</div>
-                        <input type="number" id="split_credit" placeholder="₹" class="border p-1 rounded w-20 text-sm bg-gray-100 text-red-600 font-bold" readonly>
+                    <div id="split_fields" class="hidden flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-blue-50 p-3 rounded border border-blue-200 w-full sm:w-auto mt-2 sm:mt-0">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-bold text-blue-800 w-12">Cash:</span>
+                            <input type="number" id="split_cash" placeholder="₹ Amount" class="border border-blue-300 p-2 rounded w-full sm:w-24 text-sm outline-none focus:ring-2 focus:ring-blue-500" oninput="calculateSplitAmount()">
+                        </div>
+                        <div class="flex items-center gap-2 mt-2 sm:mt-0">
+                            <span class="text-sm font-bold text-red-800 w-12 sm:ml-2">Credit:</span>
+                            <input type="number" id="split_credit" placeholder="₹ Pending" class="border border-red-200 p-2 rounded w-full sm:w-24 text-sm bg-red-50 text-red-700 font-bold outline-none" readonly>
+                        </div>
                     </div>
                 </div>
 
-                <div class="text-xl font-bold">Grand Total: ₹<span id="grand_total">0.00</span></div>
-                <button onclick="saveAndPrint()" class="bg-green-600 text-white px-6 py-3 rounded shadow hover:bg-green-700 font-bold">Save & Print Invoice</button>
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0">
+                    <div class="text-xl md:text-2xl font-bold text-gray-800 text-center sm:text-right">Total: ₹<span id="grand_total" class="text-green-600">0.00</span></div>
+                    <button onclick="saveAndPrint()" class="bg-green-600 text-white px-6 py-3 md:py-4 rounded-lg shadow-md hover:bg-green-700 font-bold text-lg transition-colors w-full sm:w-auto">Save & Print</button>
+                </div>
             </div>
 
             <!-- Saved Invoices Section -->
-            <div class="bg-white p-6 rounded shadow mb-10">
-                <h3 class="font-bold border-b pb-2 mb-4 text-xl">Recent Invoices</h3>
-                <table class="w-full border-collapse border border-gray-300 text-sm">
-                    <thead class="bg-gray-100">
-                        <tr>
-                            <th class="border p-2 text-left">Inv No.</th>
-                            <th class="border p-2 text-left">Date</th>
-                            <th class="border p-2 text-left">Customer</th>
-                            <th class="border p-2 text-left">Mode</th>
-                            <th class="border p-2 text-right">Total (₹)</th>
-                            <th class="border p-2 text-center w-24">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="savedInvoicesList"></tbody>
-                </table>
-                <div class="flex justify-between items-center mt-4">
-                    <button onclick="prevPage()" id="btnPrev" class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50">Previous</button>
-                    <span id="pageIndicator" class="font-bold">Page 1</span>
-                    <button onclick="nextPage()" id="btnNext" class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50">Next</button>
+            <div class="bg-white p-5 md:p-6 rounded-lg shadow-sm border border-gray-200 mb-10">
+                <h3 class="font-bold text-gray-800 border-b pb-2 mb-4 text-xl">Recent Invoices</h3>
+                
+                <!-- Wrapping table in overflow-x-auto for mobile scrolling -->
+                <div class="overflow-x-auto rounded-lg border border-gray-200">
+                    <table class="w-full border-collapse text-sm min-w-[600px]">
+                        <thead class="bg-gray-50 border-b border-gray-200 text-gray-700">
+                            <tr>
+                                <th class="p-3 text-left font-semibold">Inv No.</th>
+                                <th class="p-3 text-left font-semibold">Date</th>
+                                <th class="p-3 text-left font-semibold">Customer</th>
+                                <th class="p-3 text-left font-semibold">Mode</th>
+                                <th class="p-3 text-right font-semibold">Total (₹)</th>
+                                <th class="p-3 text-center font-semibold w-24">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="savedInvoicesList" class="divide-y divide-gray-200 bg-white"></tbody>
+                    </table>
+                </div>
+                
+                <div class="flex justify-between items-center mt-5">
+                    <button onclick="prevPage()" id="btnPrev" class="px-5 py-2 bg-gray-100 border border-gray-300 rounded font-medium hover:bg-gray-200 disabled:opacity-50 transition-colors">Previous</button>
+                    <span id="pageIndicator" class="font-bold text-gray-600 bg-gray-50 px-4 py-1.5 rounded-full border border-gray-200">Page 1</span>
+                    <button onclick="nextPage()" id="btnNext" class="px-5 py-2 bg-gray-100 border border-gray-300 rounded font-medium hover:bg-gray-200 disabled:opacity-50 transition-colors">Next</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- INVOICE PRINT TEMPLATE -->
-    <div id="print-section" class="bg-white p-8 hidden text-sm">
+    <!-- INVOICE PRINT TEMPLATE (Hidden from screen) -->
+    <div id="print-section" class="bg-white p-8 hidden text-sm font-sans">
         <div class="text-center mb-4">
             <h1 class="text-2xl font-extrabold uppercase mb-1">Nazeer Fresh Food Market</h1>
-            <p class="text-sm font-normal">Bill of Supply</p> 
+            <p class="text-sm font-normal text-gray-600">Bill of Supply</p> 
         </div>
         <hr class="border-black mb-4">
         
@@ -208,73 +245,80 @@
             </div>
         </div>
 
-        <div class="flex justify-between mb-4 font-bold">
+        <div class="flex justify-between mb-4 font-bold bg-gray-50 p-2 border border-black">
             <p>Invoice No: <span id="p_inv_no" class="font-normal"></span></p>
             <p>Date: <span id="p_date" class="font-normal"></span></p>
             <p>Payment Mode: <span id="p_mode" class="font-normal"></span></p>
         </div>
         
-        <div id="p_split_banner" class="hidden mb-4 bg-gray-100 border border-black p-2 font-bold text-sm flex gap-6">
+        <div id="p_split_banner" class="hidden mb-4 bg-gray-100 border border-black p-2 font-bold text-sm flex justify-between">
             <span>Amount Paid (Cash): ₹<span id="p_split_cash_amt">0.00</span></span>
             <span>Pending Balance (Credit): ₹<span id="p_split_credit_amt">0.00</span></span>
         </div>
 
         <table class="w-full mb-6 border-collapse border border-black">
             <thead>
-                <tr class="bg-gray-100 border border-black text-left">
-                    <th class="border border-black p-2 w-10 text-center">Sl</th>
-                    <th class="border border-black p-2 w-20">Mat. Code</th>
-                    <th class="border border-black p-2">Material Description</th>
-                    <th class="border border-black p-2 text-center w-12">Unit</th>
-                    <th class="border border-black p-2 text-center w-16">Qty</th>
-                    <th class="border border-black p-2 text-right w-20">Unit Price</th>
-                    <th class="border border-black p-2 text-right w-24">Amount</th>
+                <tr class="bg-gray-200 border border-black text-left">
+                    <th class="border border-black p-2 w-10 text-center font-bold">Sl</th>
+                    <th class="border border-black p-2 w-20 font-bold">Mat. Code</th>
+                    <th class="border border-black p-2 font-bold">Material Description</th>
+                    <th class="border border-black p-2 text-center w-12 font-bold">Unit</th>
+                    <th class="border border-black p-2 text-center w-16 font-bold">Qty</th>
+                    <th class="border border-black p-2 text-right w-20 font-bold">Price</th>
+                    <th class="border border-black p-2 text-right w-24 font-bold">Amount</th>
                 </tr>
             </thead>
             <tbody id="p_items_body"></tbody>
         </table>
 
         <!-- Remark Print Banner -->
-        <div id="p_remark_container" class="hidden mb-4 border border-black p-2 text-sm">
-            <strong>Remark: </strong> <span id="p_remark_text"></span>
+        <div id="p_remark_container" class="hidden mb-4 border border-black p-2 text-sm bg-gray-50">
+            <strong>Remark: </strong> <span id="p_remark_text" class="italic"></span>
         </div>
 
         <div class="flex justify-end items-end mt-4">
-            <div class="text-lg font-bold border-2 border-black p-2">Grand Total: ₹<span id="p_grand_total"></span></div>
+            <div class="text-lg font-bold border-2 border-black p-2 bg-gray-100">
+                Grand Total: ₹<span id="p_grand_total"></span>
+            </div>
         </div>
 
-        <div class="mt-12 flex justify-between items-end">
+        <div class="mt-16 flex justify-between items-end">
             <div class="w-1/2 text-xs">
-                <p class="font-bold mb-1">Terms & Conditions:</p>
+                <p class="font-bold mb-1 underline">Terms & Conditions:</p>
                 <ul class="list-disc pl-4 mb-2"><li>Items sold will not be taken back.</li></ul>
                 <p class="italic text-gray-700">This is a computer generated invoice and doesn't need a signature.</p>
             </div>
             <div class="w-1/3 text-right text-sm">
                 <p>For <strong>Nazeer Fresh Food Market</strong></p><br><br><br>
-                <p class="border-t border-black inline-block pt-1">Authorised Signatory</p>
+                <p class="border-t border-black inline-block pt-1 font-bold">Authorised Signatory</p>
             </div>
         </div>
     </div>
 
     <!-- SCRIPTS -->
     <script>
+        // Supabase Configuration
         const supabaseUrl = 'https://tmrulrlwyspnlwodrjpa.supabase.co'; 
         const supabaseKey = 'sb_publishable_tlacY2KLpvy8YjOYJiCsEA_sP1qA6zS';
         const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-        const ADMIN_EMAIL = 'gsmmargao@gmail.com';
 
         let globalCatalog = []; let billToData = []; let shipToData = [];
         let currentPage = 1; const limitPerPage = 10;
         let sidebarTimer; let inactivityTimer;
 
         async function initApp() {
-            await checkAuth(); // Kicks out if not logged in
+            // Auto-collapse sidebar on mobile load
+            if (window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('collapsed');
+            }
+            
+            await checkAuth(); // Ensure user is logged in
             setupTimers();
             await fetchAllBaseData();
             loadInvoices(1);
         }
 
-        /* ----- AUTHENTICATION & ADMIN ----- */
+        /* ----- AUTHENTICATION ----- */
         async function checkAuth() {
             const { data } = await supabaseClient.auth.getSession();
             if (!data || !data.session) {
@@ -286,11 +330,6 @@
             const userNameDisplay = userEmail.split('@')[0].toUpperCase();
             document.getElementById('userNameDisplay').innerText = userNameDisplay;
             document.getElementById('userAvatar').innerText = userNameDisplay.charAt(0);
-
-            // Show admin tabs if it's the admin
-            if (userEmail.trim().toLowerCase() === ADMIN_EMAIL.trim().toLowerCase()) {
-                document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
-            }
         }
 
         async function logOut() {
@@ -379,7 +418,7 @@
             let grand = 0;
             document.querySelectorAll('.i-total').forEach(input => grand += parseFloat(input.value) || 0);
             document.getElementById('grand_total').innerText = grand.toFixed(2);
-            calculateSplitAmount(); // Update split fields if active
+            calculateSplitAmount(); 
         }
 
         function toggleSplitPayment() {
@@ -387,8 +426,10 @@
             const splitFields = document.getElementById('split_fields');
             if (mode === 'Split') {
                 splitFields.classList.remove('hidden');
+                splitFields.classList.add('flex');
                 calculateSplitAmount();
             } else {
+                splitFields.classList.remove('flex');
                 splitFields.classList.add('hidden');
                 document.getElementById('split_cash').value = '';
                 document.getElementById('split_credit').value = '';
@@ -406,19 +447,25 @@
         function addItemRow() {
             const container = document.getElementById('items-container');
             const row = document.createElement('div');
-            row.className = 'flex gap-2 mb-2 item-row';
+            // Adding classes for mobile grid layout matching the hardcoded first row
+            row.className = 'item-row-grid mb-4 item-row bg-gray-50 md:bg-transparent p-4 md:p-0 rounded-lg border border-gray-200 md:border-0';
             row.innerHTML = `
-                <input type="text" list="catalogSuggestions" placeholder="Material Description" class="border p-2 rounded flex-1 i-name" onchange="autoFillItem(this)">
-                <input type="text" placeholder="Mat. Code" class="border p-2 rounded w-24 i-mcode">
-                <input type="text" placeholder="Category" class="border p-2 rounded w-24 i-cat">
-                <select class="border p-2 rounded w-20 i-unit"><option value="Kg">Kg</option><option value="Ltr">Ltr</option><option value="Num">Num</option></select>
-                <input type="number" placeholder="Qty" class="border p-2 rounded w-20 i-qty" oninput="calculateRow(this)">
-                <input type="number" placeholder="Unit Price" class="border p-2 rounded w-24 i-price" oninput="calculateRow(this)">
-                <input type="text" placeholder="Total" class="border p-2 rounded w-24 i-total bg-gray-100" readonly>
+                <div class="col-span-2 md:flex-1">
+                    <input type="text" list="catalogSuggestions" placeholder="Material Description ▾ (Tap to search/select)" class="border border-gray-300 p-2.5 rounded w-full i-name focus:ring-2 focus:ring-blue-500 outline-none" onchange="autoFillItem(this)">
+                </div>
+                <input type="text" placeholder="Mat. Code" class="border border-gray-300 p-2.5 rounded w-full md:w-24 i-mcode focus:ring-2 focus:ring-blue-500 outline-none">
+                <input type="text" placeholder="Category" class="border border-gray-300 p-2.5 rounded w-full md:w-28 i-cat focus:ring-2 focus:ring-blue-500 outline-none">
+                <select class="border border-gray-300 p-2.5 rounded w-full md:w-20 i-unit focus:ring-2 focus:ring-blue-500 outline-none"><option value="Kg">Kg</option><option value="Ltr">Ltr</option><option value="Num">Num</option></select>
+                <input type="number" placeholder="Qty" class="border border-gray-300 p-2.5 rounded w-full md:w-20 i-qty focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculateRow(this)">
+                <input type="number" placeholder="Price" class="border border-gray-300 p-2.5 rounded w-full md:w-24 i-price focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculateRow(this)">
+                <div class="col-span-2 md:col-span-1 md:w-28">
+                    <input type="text" placeholder="Total" class="border border-gray-300 p-2.5 rounded w-full i-total bg-gray-200 font-bold text-gray-700 outline-none" readonly>
+                </div>
             `;
             container.appendChild(row);
         }
 
+        // Used internally before fetching new blanks
         function clearForm() {
             document.getElementById('editing_invoice_id').value = '';
             document.getElementById('invoiceFormTitle').innerText = 'Create Invoice';
@@ -450,7 +497,8 @@
             if(items.length === 0) return alert("Add at least one material with quantity.");
 
             const btn = document.querySelector('button[onclick="saveAndPrint()"]');
-            btn.innerText = "Saving..."; btn.disabled = true;
+            btn.innerText = "Saving & Printing..."; btn.disabled = true;
+            btn.classList.add('opacity-75');
 
             try {
                 let invoiceId = document.getElementById('editing_invoice_id').value;
@@ -466,7 +514,6 @@
                     cr_amount = parseFloat(document.getElementById('split_credit').value) || 0;
                 }
 
-                // Prepare insert/update payload (ensure your Supabase table accepts remark, cash_amount, credit_amount if you want them saved to DB. If not, they will be ignored or cause an error. Modify payload if necessary).
                 let payload = { 
                     bill_to_name: bName, bill_to_contact: document.getElementById('b_contact').value, bill_to_address: document.getElementById('b_address').value, 
                     deliver_to_name: dName, deliver_to_contact: dContact, deliver_to_address: dAddress, 
@@ -499,7 +546,11 @@
                 setTimeout(() => window.location.reload(), 1500);
 
             } catch (err) {
-                console.error(err); alert("Error saving invoice."); btn.innerText = "Save & Print Invoice"; btn.disabled = false;
+                console.error(err); 
+                alert("Error saving invoice. Check console for details."); 
+                btn.innerText = "Save & Print"; 
+                btn.disabled = false;
+                btn.classList.remove('opacity-75');
             }
         }
 
@@ -525,8 +576,10 @@
                 document.getElementById('p_split_cash_amt').innerText = cashAmt.toFixed(2);
                 document.getElementById('p_split_credit_amt').innerText = creditAmt.toFixed(2);
                 pSplitBanner.classList.remove('hidden');
+                pSplitBanner.classList.add('flex');
             } else {
                 pSplitBanner.classList.add('hidden');
+                pSplitBanner.classList.remove('flex');
             }
 
             const tbody = document.getElementById('p_items_body'); tbody.innerHTML = '';
@@ -534,11 +587,11 @@
                 tbody.innerHTML += `<tr>
                     <td class="p-2 border border-black text-center">${i + 1}</td>
                     <td class="p-2 border border-black">${item.mcode || '-'}</td>
-                    <td class="p-2 border border-black">${item.name}</td>
+                    <td class="p-2 border border-black font-semibold">${item.name}</td>
                     <td class="p-2 border border-black text-center">${item.unit}</td>
-                    <td class="p-2 border border-black text-center">${item.qty}</td>
+                    <td class="p-2 border border-black text-center font-bold">${item.qty}</td>
                     <td class="p-2 border border-black text-right">₹${item.price.toFixed(2)}</td>
-                    <td class="p-2 border border-black text-right">₹${item.total.toFixed(2)}</td>
+                    <td class="p-2 border border-black text-right font-bold">₹${item.total.toFixed(2)}</td>
                 </tr>`;
             });
             document.getElementById('p_grand_total').innerText = total.toFixed(2);
@@ -549,18 +602,22 @@
             currentPage = page; const offset = (currentPage - 1) * limitPerPage;
             const tbody = document.getElementById('savedInvoicesList');
             const { data, count } = await supabaseClient.from('invoices').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(offset, offset + limitPerPage - 1);
+            
             tbody.innerHTML = (data||[]).map(inv => `
-                <tr class="hover:bg-gray-50">
-                    <td class="border p-2 font-bold">${inv.invoice_number}</td>
-                    <td class="border p-2">${new Date(inv.created_at).toLocaleDateString()}</td>
-                    <td class="border p-2">${inv.bill_to_name}</td>
-                    <td class="border p-2">${inv.payment_mode}</td>
-                    <td class="border p-2 text-right font-bold">₹${inv.total_amount.toFixed(2)}</td>
-                    <td class="border p-2 text-center">
-                        <button onclick="editInvoice(${inv.id})" class="text-blue-600 hover:underline mr-2">✏️</button>
-                        <button onclick="reprintInvoice(${inv.id})" class="text-green-600 hover:underline">🖨️</button>
+                <tr class="hover:bg-blue-50 transition-colors">
+                    <td class="p-3 font-bold text-gray-800">#${inv.invoice_number}</td>
+                    <td class="p-3 text-gray-600">${new Date(inv.created_at).toLocaleDateString('en-GB')}</td>
+                    <td class="p-3 font-medium text-gray-800">${inv.bill_to_name}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-bold border border-gray-200 uppercase">${inv.payment_mode}</span>
+                    </td>
+                    <td class="p-3 text-right font-bold text-gray-800">₹${inv.total_amount.toFixed(2)}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="editInvoice(${inv.id})" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 p-1.5 rounded mr-1 transition-colors" title="Edit">✏️</button>
+                        <button onclick="reprintInvoice(${inv.id})" class="text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 p-1.5 rounded transition-colors" title="Reprint">🖨️</button>
                     </td>
                 </tr>`).join('');
+                
             document.getElementById('btnPrev').disabled = (currentPage === 1);
             document.getElementById('btnNext').disabled = (offset + limitPerPage >= count);
             document.getElementById('pageIndicator').innerText = `Page ${currentPage}`;
@@ -571,7 +628,7 @@
             const { data: items } = await supabaseClient.from('invoice_items').select('*').eq('invoice_id', id);
             
             document.getElementById('editing_invoice_id').value = inv.id;
-            document.getElementById('invoiceFormTitle').innerHTML = `Editing: <span class="text-blue-600">#${inv.invoice_number}</span>`;
+            document.getElementById('invoiceFormTitle').innerHTML = `Editing Invoice: <span class="text-blue-600">#${inv.invoice_number}</span>`;
             document.getElementById('b_name').value = inv.bill_to_name; document.getElementById('b_contact').value = inv.bill_to_contact; document.getElementById('b_address').value = inv.bill_to_address;
             document.getElementById('d_name').value = inv.deliver_to_name; document.getElementById('d_contact').value = inv.deliver_to_contact; document.getElementById('d_address').value = inv.deliver_to_address;
             
@@ -586,19 +643,26 @@
 
             const container = document.getElementById('items-container'); container.innerHTML = '';
             items.forEach(item => {
-                const row = document.createElement('div'); row.className = 'flex gap-2 mb-2 item-row';
+                const row = document.createElement('div'); 
+                row.className = 'item-row-grid mb-4 item-row bg-gray-50 md:bg-transparent p-4 md:p-0 rounded-lg border border-gray-200 md:border-0';
                 row.innerHTML = `
-                    <input type="text" list="catalogSuggestions" value="${item.material_desc}" class="border p-2 rounded flex-1 i-name" onchange="autoFillItem(this)">
-                    <input type="text" value="${item.material_code || ''}" class="border p-2 rounded w-24 i-mcode">
-                    <input type="text" value="${item.category || ''}" class="border p-2 rounded w-24 i-cat">
-                    <select class="border p-2 rounded w-20 i-unit"><option value="Kg" ${item.unit=='Kg'?'selected':''}>Kg</option><option value="Ltr" ${item.unit=='Ltr'?'selected':''}>Ltr</option><option value="Num" ${item.unit=='Num'?'selected':''}>Num</option></select>
-                    <input type="number" value="${item.quantity}" class="border p-2 rounded w-20 i-qty" oninput="calculateRow(this)">
-                    <input type="number" value="${item.unit_price}" class="border p-2 rounded w-24 i-price" oninput="calculateRow(this)">
-                    <input type="text" value="${item.total}" class="border p-2 rounded w-24 i-total bg-gray-100" readonly>
+                    <div class="col-span-2 md:flex-1">
+                        <input type="text" list="catalogSuggestions" value="${item.material_desc}" class="border border-gray-300 p-2.5 rounded w-full i-name focus:ring-2 focus:ring-blue-500 outline-none" onchange="autoFillItem(this)">
+                    </div>
+                    <input type="text" value="${item.material_code || ''}" class="border border-gray-300 p-2.5 rounded w-full md:w-24 i-mcode focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="text" value="${item.category || ''}" class="border border-gray-300 p-2.5 rounded w-full md:w-28 i-cat focus:ring-2 focus:ring-blue-500 outline-none">
+                    <select class="border border-gray-300 p-2.5 rounded w-full md:w-20 i-unit focus:ring-2 focus:ring-blue-500 outline-none"><option value="Kg" ${item.unit=='Kg'?'selected':''}>Kg</option><option value="Ltr" ${item.unit=='Ltr'?'selected':''}>Ltr</option><option value="Num" ${item.unit=='Num'?'selected':''}>Num</option></select>
+                    <input type="number" value="${item.quantity}" class="border border-gray-300 p-2.5 rounded w-full md:w-20 i-qty focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculateRow(this)">
+                    <input type="number" value="${item.unit_price}" class="border border-gray-300 p-2.5 rounded w-full md:w-24 i-price focus:ring-2 focus:ring-blue-500 outline-none" oninput="calculateRow(this)">
+                    <div class="col-span-2 md:col-span-1 md:w-28">
+                        <input type="text" value="${item.total}" class="border border-gray-300 p-2.5 rounded w-full i-total bg-gray-200 font-bold text-gray-700 outline-none" readonly>
+                    </div>
                 `;
                 container.appendChild(row);
             });
-            calculateGrandTotal(); window.scrollTo(0,0);
+            calculateGrandTotal(); 
+            // Scroll smoothly to top
+            document.querySelector('.overflow-y-auto').scrollTo({top: 0, behavior: 'smooth'});
         }
 
         async function reprintInvoice(id) {
