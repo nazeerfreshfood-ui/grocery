@@ -6,52 +6,232 @@
     <title>Credit Book - Nazeer Fresh Food</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head>
-<body class="bg-gray-100 flex h-screen" onload="loadData()">
-    <div class="w-64 bg-gray-900 text-white flex flex-col h-full shrink-0">
-        <div class="p-4 text-xl font-bold border-b border-gray-700">Nazeer Fresh Food</div>
-        <nav class="flex-1 p-4 space-y-2">
-            <a href="index.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Billing</a>
-            <a href="bill-to.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Bill To</a>
-            <a href="deliver-to.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Deliver To</a>
-            <a href="cashbook.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Cashbook</a>
-            <a href="credit-book.html" class="block p-2 bg-blue-600 rounded text-white">Credit Book</a>
-        </nav>
-    </div>
+    <style>
+        /* Sidebar transition styles & Mobile Overlay */
+        #sidebar {
+            transition: width 0.3s ease, opacity 0.3s ease;
+            overflow-x: hidden;
+            white-space: nowrap;
+            position: absolute;
+            z-index: 50;
+            height: 100%;
+        }
+        @media (min-width: 768px) {
+            #sidebar {
+                position: relative;
+            }
+        }
+        #sidebar.collapsed {
+            width: 0 !important;
+            opacity: 0;
+            padding-left: 0;
+            padding-right: 0;
+            border: none;
+        }
 
-    <div class="flex-1 flex flex-col p-6 overflow-y-auto">
-        <h2 class="text-2xl font-bold mb-6 text-red-700">Credit Book (Pending Dues)</h2>
-        <div class="bg-white p-6 rounded shadow">
-            <table class="w-full border-collapse border border-gray-300">
-                <thead class="bg-gray-100">
-                    <tr>
-                        <th class="border p-2 text-left">Date</th>
-                        <th class="border p-2 text-left">Invoice No</th>
-                        <th class="border p-2 text-left">Customer</th>
-                        <th class="border p-2 text-right">Credit Pending (₹)</th>
-                    </tr>
-                </thead>
-                <tbody id="dataTable"><tr><td colspan="4" class="text-center p-4">Loading...</td></tr></tbody>
-                <tfoot>
-                    <tr class="bg-red-100 font-bold">
-                        <td colspan="3" class="border p-2 text-right">Total Pending Dues:</td>
-                        <td class="border p-2 text-right text-red-800" id="totalValue">0.00</td>
-                    </tr>
-                </tfoot>
-            </table>
+        /* Custom Scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    </style>
+</head>
+<body class="bg-gray-100 flex h-screen overflow-hidden" onload="initApp()">
+
+    <!-- Sidebar Navigation -->
+    <div id="sidebar" class="w-64 bg-gray-900 text-white flex flex-col shrink-0 shadow-2xl md:shadow-none" onmouseenter="clearSidebarTimer()" onmouseleave="resetSidebarTimer()">
+        <div class="p-4 text-xl font-bold border-b border-gray-700 flex justify-between items-center">
+            <span>Nazeer Fresh Food</span>
+            <button onclick="toggleSidebar()" class="text-gray-400 hover:text-white md:hidden p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto custom-scroll">
+            <a href="index.html" class="block p-3 md:p-2 hover:bg-gray-700 rounded text-gray-300 transition-colors">Billing</a>
+            <a href="material-catalogue.html" class="block p-3 md:p-2 hover:bg-gray-700 rounded text-gray-300 transition-colors">Material Catalogue</a>
+            <a href="customer.html" class="block p-3 md:p-2 hover:bg-gray-700 rounded text-gray-300 transition-colors">Customer</a>
+            <a href="cashbook.html" class="block p-3 md:p-2 hover:bg-gray-700 rounded text-gray-300 transition-colors">Cashbook</a>
+            <a href="credit-book.html" class="block p-3 md:p-2 bg-blue-600 rounded text-white font-medium shadow-sm">Credit Book</a>
+        </nav>
+        
+        <!-- User & Logout Section -->
+        <div class="p-4 border-t border-gray-700 flex justify-between items-center bg-gray-800">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-gray-600 flex items-center justify-center font-bold text-sm shadow-inner" id="userAvatar">U</div>
+                <div class="text-sm font-semibold truncate w-24" id="userNameDisplay">User</div>
+            </div>
+            <button onclick="logOut()" class="text-gray-400 hover:text-red-500 transition-colors p-2 rounded hover:bg-gray-700" title="Logout">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+            </button>
         </div>
     </div>
 
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col h-full overflow-y-auto w-full relative custom-scroll">
+        <div class="p-4 md:p-6 w-full max-w-7xl mx-auto">
+            
+            <!-- Header -->
+            <div class="flex items-center gap-3 mb-6">
+                <button onclick="toggleSidebar()" class="bg-white border p-2 rounded shadow-sm hover:bg-gray-50 text-gray-700" title="Toggle Menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                </button>
+                <h2 class="text-xl md:text-2xl font-bold text-red-700">Credit Book (Pending Dues)</h2>
+            </div>
+            
+            <!-- Credit Book Table -->
+            <div class="bg-white p-5 md:p-6 rounded-lg shadow-sm border border-gray-200 mb-10">
+                <div class="overflow-x-auto rounded-lg border border-gray-200 custom-scroll">
+                    <table class="w-full border-collapse text-sm min-w-[600px]">
+                        <thead class="bg-gray-50 border-b border-gray-200 text-gray-700">
+                            <tr>
+                                <th class="p-3 text-left font-semibold">Date</th>
+                                <th class="p-3 text-left font-semibold">Invoice No</th>
+                                <th class="p-3 text-left font-semibold">Customer</th>
+                                <th class="p-3 text-left font-semibold">Mode</th>
+                                <th class="p-3 text-right font-semibold text-red-700">Pending Due (₹)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTable" class="divide-y divide-gray-200 bg-white">
+                            <tr><td colspan="5" class="text-center p-6 text-gray-500">Loading records...</td></tr>
+                        </tbody>
+                        <tfoot class="bg-red-50 border-t-2 border-red-200">
+                            <tr>
+                                <td colspan="4" class="p-4 text-right font-bold text-gray-800">Total Pending Dues:</td>
+                                <td class="p-4 text-right font-bold text-red-700 text-lg" id="totalValue">₹0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
     <script>
-        const supabaseClient = window.supabase.createClient('https://tmrulrlwyspnlwodrjpa.supabase.co', 'sb_publishable_tlacY2KLpvy8YjOYJiCsEA_sP1qA6zS');
+        const supabaseUrl = 'https://tmrulrlwyspnlwodrjpa.supabase.co'; 
+        const supabaseKey = 'sb_publishable_tlacY2KLpvy8YjOYJiCsEA_sP1qA6zS';
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let sidebarTimer; 
+        let inactivityTimer;
+
+        async function initApp() {
+            // Auto-collapse sidebar on mobile load
+            if (window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('collapsed');
+            }
+            
+            await checkAuth(); 
+            setupTimers();
+            loadData();
+        }
+
+        /* ----- AUTHENTICATION ----- */
+        async function checkAuth() {
+            const { data } = await supabaseClient.auth.getSession();
+            if (!data || !data.session) {
+                window.location.href = 'login.html';
+                return;
+            }
+            const userEmail = data.session.user.email;
+            const userNameDisplay = userEmail.split('@')[0].toUpperCase();
+            document.getElementById('userNameDisplay').innerText = userNameDisplay;
+            document.getElementById('userAvatar').innerText = userNameDisplay.charAt(0);
+        }
+
+        async function logOut() {
+            await supabaseClient.auth.signOut();
+            window.location.href = 'login.html';
+        }
+
+        /* ----- TIMERS & SIDEBAR ----- */
+        function setupTimers() {
+            document.body.addEventListener("mousemove", resetAllTimers);
+            document.body.addEventListener("keypress", resetAllTimers);
+            document.body.addEventListener("click", resetAllTimers);
+            document.body.addEventListener("scroll", resetAllTimers);
+            resetAllTimers();
+        }
+
+        function resetAllTimers() {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(logOut, 30 * 60 * 1000); // 30 min auto-logout
+            resetSidebarTimer();
+        }
+
+        window.resetSidebarTimer = function() {
+            clearTimeout(sidebarTimer);
+            sidebarTimer = setTimeout(() => {
+                const sb = document.getElementById('sidebar');
+                if (sb) sb.classList.add('collapsed');
+            }, 30000); 
+        }
+
+        window.clearSidebarTimer = function() { clearTimeout(sidebarTimer); }
+
+        window.toggleSidebar = function() {
+            const sb = document.getElementById('sidebar');
+            if (sb) {
+                sb.classList.toggle('collapsed');
+                if(!sb.classList.contains('collapsed')) resetSidebarTimer();
+                else clearSidebarTimer();
+            }
+        }
+
+        /* ----- DATA FETCHING ----- */
         async function loadData() {
-            const { data } = await supabaseClient.from('invoices').select('*').eq('payment_mode', 'Credit').order('created_at', { ascending: false });
-            let total = 0;
-            document.getElementById('dataTable').innerHTML = (data || []).map(inv => {
-                total += inv.total_amount;
-                return `<tr><td class="border p-2">${new Date(inv.created_at).toLocaleDateString()}</td><td class="border p-2 font-bold">${inv.invoice_number}</td><td class="border p-2">${inv.bill_to_name}</td><td class="border p-2 text-right font-bold text-red-600">₹${inv.total_amount.toFixed(2)}</td></tr>`;
-            }).join('');
-            document.getElementById('totalValue').innerText = '₹' + total.toFixed(2);
+            const tbody = document.getElementById('dataTable');
+            
+            try {
+                // Fetch any invoice that has a pending credit amount > 0
+                const { data, error } = await supabaseClient.from('invoices')
+                    .select('created_at, invoice_number, bill_to_name, payment_mode, credit_amount')
+                    .gt('credit_amount', 0)
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-gray-500 font-medium">All clear! No pending credit dues.</td></tr>';
+                    document.getElementById('totalValue').innerText = '₹0.00';
+                    return;
+                }
+
+                let total = 0;
+                
+                tbody.innerHTML = data.map(inv => {
+                    let creditAmt = parseFloat(inv.credit_amount) || 0;
+                    total += creditAmt;
+                    
+                    // Format Date
+                    const dateObj = new Date(inv.created_at);
+                    const formattedDate = dateObj.toLocaleDateString('en-GB') + ' ' + dateObj.toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'});
+
+                    return `
+                        <tr class="hover:bg-red-50 transition-colors group">
+                            <td class="p-3 text-gray-600 whitespace-nowrap">${formattedDate}</td>
+                            <td class="p-3 font-bold text-gray-800">#${inv.invoice_number}</td>
+                            <td class="p-3 font-medium text-gray-800">${inv.bill_to_name}</td>
+                            <td class="p-3">
+                                <span class="bg-gray-100 px-2 py-1 rounded text-[10px] font-bold border border-gray-200 uppercase">${inv.payment_mode}</span>
+                            </td>
+                            <td class="p-3 text-right font-bold text-red-600">₹${creditAmt.toFixed(2)}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                // Update Total
+                document.getElementById('totalValue').innerText = '₹' + total.toFixed(2);
+
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-red-600">Error loading data: ${err.message}</td></tr>`;
+            }
         }
     </script>
 </body>
