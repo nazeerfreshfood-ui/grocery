@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* Fixed Print Styles - Properly overrides Tailwind's hidden class */
+        /* Print Styles - Properly overrides Tailwind's hidden class */
         @media print {
             .no-print { display: none !important; }
             #print-section { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
@@ -15,7 +15,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 flex h-screen">
+<body class="bg-gray-100 flex h-screen" onload="initApp()">
 
     <!-- Sidebar Navigation -->
     <div class="w-64 bg-gray-900 text-white flex flex-col no-print h-full shrink-0">
@@ -35,7 +35,7 @@
         <div class="p-6">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold">Create Invoice</h2>
-                <button onclick="openCatalog()" class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700">View Item Catalog</button>
+                <button onclick="openCatalog()" class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700">Manage Item Catalog</button>
             </div>
 
             <!-- Customer Details Form -->
@@ -59,9 +59,15 @@
             <!-- Items Section -->
             <div class="bg-white p-6 rounded shadow mb-6">
                 <h3 class="font-bold border-b pb-2 mb-4">Items</h3>
+                
+                <!-- Datalist for Search/Autosuggest -->
+                <datalist id="catalogSuggestions"></datalist>
+
                 <div id="items-container">
                     <div class="flex gap-2 mb-2 item-row">
-                        <input type="text" placeholder="Item Name" class="border p-2 rounded flex-1 i-name">
+                        <!-- Added list attribute to link to datalist, and onchange for autofill -->
+                        <input type="text" list="catalogSuggestions" placeholder="Search / Item Name" class="border p-2 rounded flex-1 i-name" onchange="autoFillItem(this)">
+                        <input type="text" placeholder="Mat. Code" class="border p-2 rounded w-32 i-mcode">
                         <input type="text" placeholder="Category" class="border p-2 rounded w-32 i-cat">
                         <input type="number" placeholder="Qty" class="border p-2 rounded w-24 i-qty" oninput="calculateRow(this)">
                         <input type="number" placeholder="Price" class="border p-2 rounded w-24 i-price" oninput="calculateRow(this)">
@@ -83,21 +89,56 @@
                 <div class="text-xl font-bold">Grand Total: ₹<span id="grand_total">0.00</span></div>
                 <button onclick="saveAndPrint()" class="bg-green-600 text-white px-6 py-3 rounded shadow hover:bg-green-700 font-bold">Save & Print Invoice</button>
             </div>
+
+            <!-- Saved Invoices Section (Paginated) -->
+            <div class="bg-white p-6 rounded shadow mb-10">
+                <h3 class="font-bold border-b pb-2 mb-4 text-xl">Recent Invoices</h3>
+                <table class="w-full border-collapse border border-gray-300 text-sm">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="border border-gray-300 p-2 text-left">Inv No.</th>
+                            <th class="border border-gray-300 p-2 text-left">Date</th>
+                            <th class="border border-gray-300 p-2 text-left">Customer</th>
+                            <th class="border border-gray-300 p-2 text-left">Mode</th>
+                            <th class="border border-gray-300 p-2 text-right">Total (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="savedInvoicesList">
+                        <tr><td colspan="5" class="text-center p-4">Loading invoices...</td></tr>
+                    </tbody>
+                </table>
+                <div class="flex justify-between items-center mt-4">
+                    <button onclick="prevPage()" id="btnPrev" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50">Previous</button>
+                    <span id="pageIndicator" class="font-bold">Page 1</span>
+                    <button onclick="nextPage()" id="btnNext" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50">Next</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- CATALOG MODAL (Hidden by default) -->
     <div id="catalogModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center no-print z-50">
-        <div class="bg-white p-6 rounded shadow-lg w-full max-w-3xl max-h-[80vh] flex flex-col">
+        <div class="bg-white p-6 rounded shadow-lg w-full max-w-4xl max-h-[80vh] flex flex-col">
             <div class="flex justify-between items-center mb-4 border-b pb-2">
                 <h2 class="text-xl font-bold">Item Catalog</h2>
                 <button onclick="closeCatalog()" class="text-red-600 hover:text-red-800 font-bold text-2xl">&times;</button>
             </div>
+            
+            <!-- Add New Item Form -->
+            <div class="flex gap-2 mb-4 bg-gray-50 p-3 border rounded items-center">
+                <span class="font-bold mr-2 text-sm">Quick Add:</span>
+                <input type="text" id="newCatName" placeholder="Item Name (Required)" class="border p-2 rounded flex-1 text-sm">
+                <input type="text" id="newCatCode" placeholder="Material Code" class="border p-2 rounded w-32 text-sm">
+                <input type="text" id="newCatCat" placeholder="Category" class="border p-2 rounded w-32 text-sm">
+                <button onclick="addCatalogItem()" class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 text-sm font-bold">Add to Catalog</button>
+            </div>
+
             <div class="overflow-y-auto flex-1">
-                <table class="w-full border-collapse border border-gray-300">
+                <table class="w-full border-collapse border border-gray-300 text-sm">
                     <thead class="bg-gray-100 sticky top-0">
                         <tr>
                             <th class="border border-gray-300 p-2 text-left">Item Name</th>
+                            <th class="border border-gray-300 p-2 text-left">Material Code</th>
                             <th class="border border-gray-300 p-2 text-left">Category</th>
                             <th class="border border-gray-300 p-2 text-center w-32">Actions</th>
                         </tr>
@@ -111,38 +152,54 @@
     </div>
 
     <!-- INVOICE PRINT TEMPLATE (Hidden from normal UI) -->
-    <div id="print-section" class="bg-white p-8 hidden">
+    <div id="print-section" class="bg-white p-8 hidden text-sm">
         <!-- Header -->
-        <div class="text-center mb-6">
-            <h1 class="text-3xl font-extrabold uppercase">Nazeer Fresh Food Market</h1>
-            <p class="text-sm">5/584/ H.No 583/5, Rowanfond, Aquem Baixo, Margao</p>
-            <p class="text-sm font-bold">GSTIN: 30HDYPK7365C1Z7 | Contact No: +919529816206</p>
+        <div class="text-center mb-4">
+            <h1 class="text-2xl font-extrabold uppercase">Nazeer Fresh Food Market</h1>
         </div>
         <hr class="border-black mb-4">
         
-        <!-- Info -->
-        <div class="flex justify-between mb-6">
-            <div>
-                <p><strong>Invoice No:</strong> <span id="p_inv_no"></span></p>
-                <p><strong>Date:</strong> <span id="p_date"></span></p>
-                <p><strong>Payment Mode:</strong> <span id="p_mode"></span></p>
+        <!-- Info Grid (Company, Bill To, Deliver To) -->
+        <div class="flex justify-between mb-6 border-b border-black pb-4">
+            <div class="w-1/3 pr-2 border-r border-black">
+                <h3 class="font-bold border-b border-black mb-1">Company Details</h3>
+                <p class="font-bold">Nazeer Fresh Food Market</p>
+                <p>5/584/ H.No 583/5, Rowanfond,</p>
+                <p>Aquem Baixo, Margao</p>
+                <p><strong>GSTIN:</strong> 30HDYPK7365C1Z7</p>
+                <p><strong>Contact:</strong> +919529816206</p>
             </div>
-            <div class="text-right">
-                <p><strong>Bill To:</strong> <span id="p_b_name"></span></p>
-                <p><span id="p_b_contact"></span></p>
-                <p class="text-sm w-48 float-right text-right"><span id="p_b_address"></span></p>
+            <div class="w-1/3 px-4 border-r border-black">
+                <h3 class="font-bold border-b border-black mb-1">Bill To</h3>
+                <p><strong id="p_b_name"></strong></p>
+                <p id="p_b_address"></p>
+                <p><strong>Contact:</strong> <span id="p_b_contact"></span></p>
             </div>
+            <div class="w-1/3 pl-4">
+                <h3 class="font-bold border-b border-black mb-1">Deliver To</h3>
+                <p><strong id="p_d_name"></strong></p>
+                <p id="p_d_address"></p>
+                <p><strong>Contact:</strong> <span id="p_d_contact"></span></p>
+            </div>
+        </div>
+
+        <!-- Invoice Meta Details -->
+        <div class="flex justify-between mb-4 font-bold">
+            <p>Invoice No: <span id="p_inv_no" class="font-normal"></span></p>
+            <p>Date: <span id="p_date" class="font-normal"></span></p>
+            <p>Payment Mode: <span id="p_mode" class="font-normal"></span></p>
         </div>
 
         <!-- Table -->
         <table class="w-full mb-6 border-collapse border border-black">
             <thead>
                 <tr class="bg-gray-100 border border-black text-left">
-                    <th class="p-2 border border-black w-12 text-center">Sl</th>
+                    <th class="p-2 border border-black w-10 text-center">Sl</th>
+                    <th class="p-2 border border-black w-24">Mat. Code</th>
                     <th class="p-2 border border-black">Item Description</th>
-                    <th class="p-2 border border-black text-center">Qty</th>
-                    <th class="p-2 border border-black text-right">Price</th>
-                    <th class="p-2 border border-black text-right">Amount</th>
+                    <th class="p-2 border border-black text-center w-16">Qty</th>
+                    <th class="p-2 border border-black text-right w-24">Price</th>
+                    <th class="p-2 border border-black text-right w-24">Amount</th>
                 </tr>
             </thead>
             <tbody id="p_items_body">
@@ -151,16 +208,16 @@
         </table>
 
         <!-- Totals & Terms -->
-        <div class="flex justify-between items-end mt-12">
+        <div class="flex justify-between items-end mt-8">
             <div>
-                <p id="p_pending_dues" class="font-bold text-xl border-2 border-black p-2 hidden uppercase tracking-wider">Pending Dues Applicable</p>
+                <p id="p_pending_dues" class="font-bold text-lg border-2 border-black p-2 hidden uppercase tracking-wider">Pending Dues Applicable</p>
             </div>
-            <div class="text-xl font-bold border-2 border-black p-2">
+            <div class="text-lg font-bold border-2 border-black p-2">
                 Grand Total: ₹<span id="p_grand_total"></span>
             </div>
         </div>
 
-        <div class="mt-16 flex justify-between items-end">
+        <div class="mt-12 flex justify-between items-end">
             <div class="w-1/2 text-xs">
                 <p class="font-bold mb-1">Terms & Conditions:</p>
                 <ul class="list-disc pl-4 mb-2">
@@ -168,7 +225,7 @@
                 </ul>
                 <p class="italic text-gray-700">This is a computer generated invoice and doesn't need a signature.</p>
             </div>
-            <div class="w-1/3 text-right">
+            <div class="w-1/3 text-right text-sm">
                 <p>For <strong>Nazeer Fresh Food Market</strong></p>
                 <br><br><br>
                 <p class="border-t border-black inline-block pt-1">Authorised Signatory</p>
@@ -178,40 +235,84 @@
 
     <!-- SUPABASE SCRIPT & LOGIC -->
     <script>
-        // --- INITIALIZE SUPABASE ---
         const supabaseUrl = 'https://tmrulrlwyspnlwodrjpa.supabase.co'; 
         const supabaseKey = 'sb_publishable_tlacY2KLpvy8YjOYJiCsEA_sP1qA6zS';
         const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        // --- CATALOG MODAL LOGIC (With Edit/Delete) ---
+        let globalCatalog = []; // Stores catalog for autosuggest
+        let currentPage = 1;
+        const limitPerPage = 10;
+
+        // Initialization function called on body load
+        async function initApp() {
+            await fetchCatalogForSuggestions();
+            await loadInvoices(1);
+        }
+
+        // --- CATALOG & AUTOSUGGEST LOGIC ---
+        async function fetchCatalogForSuggestions() {
+            const { data, error } = await supabaseClient.from('catalog').select('*').order('name');
+            if (error) {
+                console.error("Error fetching catalog for search:", error);
+                return;
+            }
+            
+            globalCatalog = data || [];
+            const datalist = document.getElementById('catalogSuggestions');
+            datalist.innerHTML = '';
+            
+            globalCatalog.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.name;
+                datalist.appendChild(option);
+            });
+        }
+
+        function autoFillItem(inputElement) {
+            const row = inputElement.closest('.item-row');
+            const selectedName = inputElement.value.trim();
+            const foundItem = globalCatalog.find(item => item.name === selectedName);
+
+            if (foundItem) {
+                row.querySelector('.i-mcode').value = foundItem.material_code || '';
+                row.querySelector('.i-cat').value = foundItem.category || '';
+            }
+        }
+
         async function openCatalog() {
             document.getElementById('catalogModal').classList.remove('hidden');
+            renderCatalogTable();
+        }
+
+        async function renderCatalogTable() {
             const tbody = document.getElementById('catalogList');
-            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center">Loading catalog...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center">Loading catalog...</td></tr>';
             
+            // Refresh global list
             const { data, error } = await supabaseClient.from('catalog').select('*').order('name');
-            
             if (error) {
-                tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-red-600">Error loading catalog. Is RLS turned off?</td></tr>';
-                console.error(error);
+                tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-red-600">Error loading catalog. Is RLS turned off?</td></tr>';
                 return;
             }
 
+            globalCatalog = data || [];
             tbody.innerHTML = '';
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-gray-500">Catalog is empty. Items save automatically upon billing.</td></tr>';
+            
+            if (globalCatalog.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-500">Catalog is empty. Add items above.</td></tr>';
             } else {
-                data.forEach(item => {
-                    // Escaping quotes for the inline functions to prevent breaking HTML
+                globalCatalog.forEach(item => {
                     const safeName = (item.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
                     const safeCat = (item.category || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const safeCode = (item.material_code || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
                     
                     tbody.innerHTML += `
                         <tr class="hover:bg-gray-50">
                             <td class="border border-gray-300 p-2 font-medium">${item.name || '-'}</td>
+                            <td class="border border-gray-300 p-2 text-gray-600">${item.material_code || '-'}</td>
                             <td class="border border-gray-300 p-2 text-gray-600">${item.category || '-'}</td>
                             <td class="border border-gray-300 p-2 text-center">
-                                <button onclick="editCatalogItem(${item.id}, '${safeName}', '${safeCat}')" class="text-blue-600 hover:text-blue-800 font-bold mr-3">Edit</button>
+                                <button onclick="editCatalogItem(${item.id}, '${safeName}', '${safeCode}', '${safeCat}')" class="text-blue-600 hover:text-blue-800 font-bold mr-3">Edit</button>
                                 <button onclick="deleteCatalogItem(${item.id})" class="text-red-600 hover:text-red-800 font-bold">Delete</button>
                             </td>
                         </tr>
@@ -222,50 +323,114 @@
 
         function closeCatalog() {
             document.getElementById('catalogModal').classList.add('hidden');
+            fetchCatalogForSuggestions(); // Update datalist on close
         }
 
-        async function editCatalogItem(id, currentName, currentCat) {
-            const newName = prompt("Edit Item Name:", currentName);
-            if (newName === null) return; // Cancelled
+        async function addCatalogItem() {
+            const name = document.getElementById('newCatName').value.trim();
+            const code = document.getElementById('newCatCode').value.trim();
+            const cat = document.getElementById('newCatCat').value.trim();
 
-            const newCat = prompt("Edit Category:", currentCat);
-            if (newCat === null) return; // Cancelled
+            if (!name) return alert("Item Name is required!");
 
-            if (newName.trim() === '') {
-                alert("Item name cannot be empty.");
-                return;
-            }
-
-            const { error } = await supabaseClient
-                .from('catalog')
-                .update({ name: newName.trim(), category: newCat.trim() })
-                .eq('id', id);
+            const { error } = await supabaseClient.from('catalog').insert([{
+                name: name,
+                material_code: code,
+                category: cat
+            }]);
 
             if (error) {
                 console.error(error);
-                alert("Error updating item. Check console for details.");
+                alert("Error adding item (It might already exist).");
             } else {
-                openCatalog(); // Refresh the list
+                document.getElementById('newCatName').value = '';
+                document.getElementById('newCatCode').value = '';
+                document.getElementById('newCatCat').value = '';
+                renderCatalogTable();
+            }
+        }
+
+        async function editCatalogItem(id, currentName, currentCode, currentCat) {
+            const newName = prompt("Edit Item Name:", currentName);
+            if (newName === null) return;
+
+            const newCode = prompt("Edit Material Code:", currentCode);
+            if (newCode === null) return;
+
+            const newCat = prompt("Edit Category:", currentCat);
+            if (newCat === null) return;
+
+            if (newName.trim() === '') return alert("Item name cannot be empty.");
+
+            const { error } = await supabaseClient.from('catalog').update({ 
+                name: newName.trim(), 
+                material_code: newCode.trim(),
+                category: newCat.trim() 
+            }).eq('id', id);
+
+            if (error) {
+                console.error(error);
+                alert("Error updating item.");
+            } else {
+                renderCatalogTable();
             }
         }
 
         async function deleteCatalogItem(id) {
-            if (!confirm("Are you sure you want to delete this item from the catalog?")) {
+            if (!confirm("Are you sure you want to delete this item?")) return;
+            const { error } = await supabaseClient.from('catalog').delete().eq('id', id);
+            if (error) alert("Error deleting item.");
+            else renderCatalogTable();
+        }
+
+        // --- INVOICE PAGINATION LOGIC ---
+        async function loadInvoices(page) {
+            currentPage = page;
+            document.getElementById('pageIndicator').innerText = `Page ${currentPage}`;
+            
+            const offset = (currentPage - 1) * limitPerPage;
+            
+            const tbody = document.getElementById('savedInvoicesList');
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Loading...</td></tr>';
+
+            const { data, error, count } = await supabaseClient
+                .from('invoices')
+                .select('*', { count: 'exact' })
+                .order('created_at', { ascending: false })
+                .range(offset, offset + limitPerPage - 1);
+
+            if (error) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-600 p-4">Failed to load invoices.</td></tr>';
                 return;
             }
 
-            const { error } = await supabaseClient
-                .from('catalog')
-                .delete()
-                .eq('id', id);
-
-            if (error) {
-                console.error(error);
-                alert("Error deleting item.");
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-500 p-4">No invoices found.</td></tr>';
             } else {
-                openCatalog(); // Refresh the list
+                data.forEach(inv => {
+                    const dateObj = new Date(inv.created_at);
+                    const formattedDate = `${dateObj.toLocaleDateString()} ${dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-gray-50">
+                            <td class="border border-gray-300 p-2 font-bold">${inv.invoice_number || '-'}</td>
+                            <td class="border border-gray-300 p-2">${formattedDate}</td>
+                            <td class="border border-gray-300 p-2">${inv.bill_to_name || '-'}</td>
+                            <td class="border border-gray-300 p-2">${inv.payment_mode || '-'}</td>
+                            <td class="border border-gray-300 p-2 text-right font-bold text-green-700">₹${(inv.total_amount || 0).toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
             }
+
+            // Pagination Button states
+            document.getElementById('btnPrev').disabled = (currentPage === 1);
+            document.getElementById('btnNext').disabled = (offset + limitPerPage >= count);
         }
+
+        function prevPage() { if (currentPage > 1) loadInvoices(currentPage - 1); }
+        function nextPage() { loadInvoices(currentPage + 1); }
+
 
         // --- BILLING LOGIC ---
         function calculateRow(element) {
@@ -289,7 +454,8 @@
             const newRow = document.createElement('div');
             newRow.className = 'flex gap-2 mb-2 item-row';
             newRow.innerHTML = `
-                <input type="text" placeholder="Item Name" class="border p-2 rounded flex-1 i-name">
+                <input type="text" list="catalogSuggestions" placeholder="Search / Item Name" class="border p-2 rounded flex-1 i-name" onchange="autoFillItem(this)">
+                <input type="text" placeholder="Mat. Code" class="border p-2 rounded w-32 i-mcode">
                 <input type="text" placeholder="Category" class="border p-2 rounded w-32 i-cat">
                 <input type="number" placeholder="Qty" class="border p-2 rounded w-24 i-qty" oninput="calculateRow(this)">
                 <input type="number" placeholder="Price" class="border p-2 rounded w-24 i-price" oninput="calculateRow(this)">
@@ -302,10 +468,7 @@
             const btn = document.querySelector('button[onclick="saveAndPrint()"]');
             
             const bName = document.getElementById('b_name').value;
-            if(!bName) {
-                alert("Please enter Bill To Name");
-                return;
-            }
+            if(!bName) return alert("Please enter Bill To Name");
 
             const itemsRows = document.querySelectorAll('.item-row');
             let items = [];
@@ -313,86 +476,84 @@
 
             itemsRows.forEach(row => {
                 const name = row.querySelector('.i-name').value.trim();
+                const mcode = row.querySelector('.i-mcode').value.trim();
                 const cat = row.querySelector('.i-cat').value.trim();
                 const qty = parseFloat(row.querySelector('.i-qty').value) || 0;
                 const price = parseFloat(row.querySelector('.i-price').value) || 0;
                 const total = parseFloat(row.querySelector('.i-total').value) || 0;
+                
                 if(name && qty > 0) {
-                    items.push({ name, cat, qty, price, total });
+                    items.push({ name, mcode, cat, qty, price, total });
                     totalAmount += total;
                 }
             });
 
-            if(items.length === 0) {
-                alert("Please add at least one item with a valid quantity.");
-                return;
-            }
+            if(items.length === 0) return alert("Please add at least one item with a valid quantity.");
 
-            // Change button state
-            btn.innerText = "Saving to Database...";
+            btn.innerText = "Saving...";
             btn.disabled = true;
 
             try {
-                // 1. Get the next invoice number
-                const { count, error: countError } = await supabaseClient
-                    .from('invoices')
-                    .select('*', { count: 'exact', head: true });
-                
+                // Get next invoice number
+                const { count, error: countError } = await supabaseClient.from('invoices').select('*', { count: 'exact', head: true });
                 let invNumInt = (count || 0) + 1;
                 let invNumber = String(invNumInt).padStart(3, '0');
-
                 const paymentMode = document.getElementById('payment_mode').value;
 
-                // 2. Insert Invoice
+                // Deliver To fallback (use Bill to if empty)
+                const dName = document.getElementById('d_name').value || bName;
+                const dContact = document.getElementById('d_contact').value || document.getElementById('b_contact').value;
+                const dAddress = document.getElementById('d_address').value || document.getElementById('b_address').value;
+
+                // Insert Invoice
                 const { data: invData, error: invError } = await supabaseClient.from('invoices').insert([{
                     invoice_number: invNumber,
                     bill_to_name: bName,
                     bill_to_contact: document.getElementById('b_contact').value,
                     bill_to_address: document.getElementById('b_address').value,
-                    deliver_to_name: document.getElementById('d_name').value,
-                    deliver_to_contact: document.getElementById('d_contact').value,
-                    deliver_to_address: document.getElementById('d_address').value,
+                    deliver_to_name: dName,
+                    deliver_to_contact: dContact,
+                    deliver_to_address: dAddress,
                     payment_mode: paymentMode,
                     total_amount: totalAmount
                 }]).select();
 
                 if (invError) throw invError;
-                if (!invData || invData.length === 0) throw new Error("Could not retrieve Invoice ID. Is RLS enabled in Supabase?");
-                
                 const invoiceId = invData[0].id;
 
-                // 3. Insert Items and Update Catalog
+                // Insert Items & Update Catalog
                 for(let item of items) {
-                    // Invoice line items
                     await supabaseClient.from('invoice_items').insert([{
                         invoice_id: invoiceId,
                         item_name: item.name,
+                        material_code: item.mcode,
                         category: item.cat,
                         quantity: item.qty,
                         price: item.price,
                         total: item.total
                     }]);
 
-                    // Upsert catalog item (ignores if name already exists based on unique constraint)
+                    // Upsert to catalog
                     await supabaseClient.from('catalog').upsert(
-                        { name: item.name, category: item.cat },
+                        { name: item.name, material_code: item.mcode, category: item.cat },
                         { onConflict: 'name' }
                     );
                 }
 
-                // 4. Fill Print Template
+                // Fill Print Template
                 document.getElementById('p_inv_no').innerText = invNumber;
                 document.getElementById('p_date').innerText = new Date().toLocaleDateString();
                 document.getElementById('p_mode').innerText = paymentMode;
+                
                 document.getElementById('p_b_name').innerText = bName;
                 document.getElementById('p_b_contact').innerText = document.getElementById('b_contact').value;
                 document.getElementById('p_b_address').innerText = document.getElementById('b_address').value;
                 
-                if(paymentMode === 'Credit') {
-                    document.getElementById('p_pending_dues').style.display = 'block';
-                } else {
-                    document.getElementById('p_pending_dues').style.display = 'none';
-                }
+                document.getElementById('p_d_name').innerText = dName;
+                document.getElementById('p_d_contact').innerText = dContact;
+                document.getElementById('p_d_address').innerText = dAddress;
+                
+                document.getElementById('p_pending_dues').style.display = (paymentMode === 'Credit') ? 'block' : 'none';
 
                 const pTbody = document.getElementById('p_items_body');
                 pTbody.innerHTML = '';
@@ -400,6 +561,7 @@
                     pTbody.innerHTML += `
                         <tr>
                             <td class="p-2 border border-black text-center">${index + 1}</td>
+                            <td class="p-2 border border-black">${item.mcode || '-'}</td>
                             <td class="p-2 border border-black">${item.name}</td>
                             <td class="p-2 border border-black text-center">${item.qty}</td>
                             <td class="p-2 border border-black text-right">₹${item.price.toFixed(2)}</td>
@@ -410,15 +572,15 @@
 
                 document.getElementById('p_grand_total').innerText = totalAmount.toFixed(2);
 
-                // 5. Trigger Print
+                // Print
                 window.print();
                 
-                // Refresh to clear the form
+                // Refresh
                 setTimeout(() => { window.location.reload(); }, 1500);
 
             } catch (err) {
                 console.error("Save Error:", err);
-                alert("Failed to save invoice! Check console logs. Make sure RLS is disabled in Supabase.");
+                alert("Failed to save invoice! Check console.");
                 btn.innerText = "Save & Print Invoice";
                 btn.disabled = false;
             }
