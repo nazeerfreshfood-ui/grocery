@@ -21,6 +21,7 @@
         <div class="p-4 text-xl font-bold border-b border-gray-700">Nazeer Fresh Food</div>
         <nav class="flex-1 p-4 space-y-2">
             <a href="index.html" class="block p-2 bg-blue-600 rounded text-white">Billing</a>
+            <a href="material-catalogue.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Material Catalogue</a>
             <a href="bill-to.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Bill To</a>
             <a href="deliver-to.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Deliver To</a>
             <a href="cashbook.html" class="block p-2 hover:bg-gray-700 rounded text-gray-300">Cashbook</a>
@@ -35,7 +36,8 @@
                 <h2 class="text-2xl font-bold" id="invoiceFormTitle">Create Invoice</h2>
                 <div>
                     <button onclick="clearForm()" class="bg-gray-500 text-white px-4 py-2 rounded shadow hover:bg-gray-600 mr-2">New Form</button>
-                    <button onclick="openCatalog()" class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700">Item Catalog</button>
+                    <!-- Redirects to the new full page -->
+                    <button onclick="window.location.href='material-catalogue.html'" class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700">Material Catalogue</button>
                 </div>
             </div>
 
@@ -61,7 +63,7 @@
 
             <!-- Items Section -->
             <div class="bg-white p-6 rounded shadow mb-6">
-                <h3 class="font-bold border-b pb-2 mb-4">Items</h3>
+                <h3 class="font-bold border-b pb-2 mb-4">Materials</h3>
                 <datalist id="catalogSuggestions"></datalist>
                 <div id="items-container">
                     <div class="flex gap-2 mb-2 item-row">
@@ -111,29 +113,6 @@
                     <span id="pageIndicator" class="font-bold">Page 1</span>
                     <button onclick="nextPage()" id="btnNext" class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50">Next</button>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- CATALOG MODAL -->
-    <div id="catalogModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center no-print z-50">
-        <div class="bg-white p-6 rounded shadow-lg w-full max-w-4xl max-h-[80vh] flex flex-col">
-            <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h2 class="text-xl font-bold">Item Catalog</h2>
-                <button onclick="closeCatalog()" class="text-red-600 font-bold text-2xl">&times;</button>
-            </div>
-            <div class="overflow-y-auto flex-1">
-                <table class="w-full border-collapse border border-gray-300 text-sm">
-                    <thead class="bg-gray-100 sticky top-0">
-                        <tr>
-                            <th class="border p-2 text-left">Material Description</th>
-                            <th class="border p-2 text-left">Mat. Code</th>
-                            <th class="border p-2 text-left">Unit</th>
-                            <th class="border p-2 text-left">Category</th>
-                        </tr>
-                    </thead>
-                    <tbody id="catalogList"></tbody>
-                </table>
             </div>
         </div>
     </div>
@@ -222,6 +201,7 @@
         }
 
         async function fetchAllBaseData() {
+            // Load materials for the dropdown suggestions
             const { data: catData } = await supabaseClient.from('catalog').select('*');
             globalCatalog = catData || [];
             document.getElementById('catalogSuggestions').innerHTML = globalCatalog.map(i => `<option value="${i.material_desc}">`).join('');
@@ -427,14 +407,6 @@
 
         function prevPage() { if (currentPage > 1) loadInvoices(currentPage - 1); }
         function nextPage() { loadInvoices(currentPage + 1); }
-
-        async function openCatalog() {
-            document.getElementById('catalogModal').classList.remove('hidden');
-            const tbody = document.getElementById('catalogList');
-            const { data } = await supabaseClient.from('catalog').select('*').order('material_desc');
-            tbody.innerHTML = (data || []).map(item => `<tr class="hover:bg-gray-50"><td class="border p-2 font-medium">${item.material_desc}</td><td class="border p-2">${item.material_code || '-'}</td><td class="border p-2">${item.unit || '-'}</td><td class="border p-2">${item.category || '-'}</td></tr>`).join('');
-        }
-        function closeCatalog() { document.getElementById('catalogModal').classList.add('hidden'); fetchAllBaseData(); }
     </script>
 </body>
 </html>
