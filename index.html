@@ -603,7 +603,7 @@
             calculateGrandTotal();
         }
 
-        /* ----- SAVE & PRINT ----- */
+        /* ----- SAVE & PRINT (WITH SMART NUMBERING & 409 CONFLICT FIX) ----- */
         async function saveAndPrint() {
             const bName = document.getElementById('b_name').value.trim();
             if(!bName) return alert("Please enter Customer Name");
@@ -638,12 +638,11 @@
                     c_amount = parseFloat(document.getElementById('split_cash').value) || 0;
                     cr_amount = parseFloat(document.getElementById('split_credit').value) || 0;
                 } else if (pMode === 'Credit') {
-                    cr_amount = totalAmount; // Entire amount is credit
+                    cr_amount = totalAmount; 
                 } else {
-                    c_amount = totalAmount; // Entire amount is cash
+                    c_amount = totalAmount; 
                 }
 
-                // Payload ties credit amounts ONLY to the Bill To customer
                 let payload = { 
                     bill_to_name: bName, bill_to_contact: document.getElementById('b_contact').value, bill_to_address: document.getElementById('b_address').value, 
                     deliver_to_name: dName, deliver_to_contact: dContact, deliver_to_address: dAddress, 
@@ -652,25 +651,44 @@
                 };
                 
                 let invNumber = "";
+                
                 if(invoiceId) {
-                    const { data } = await supabaseClient.from('invoices').update(payload).eq('id', invoiceId).select();
+                    const { data, error } = await supabaseClient.from('invoices').update(payload).eq('id', invoiceId).select();
+                    if (error) throw error;
+                    
                     invNumber = data[0].invoice_number;
                     await supabaseClient.from('invoice_items').delete().eq('invoice_id', invoiceId);
                 } else {
-                    const { count } = await supabaseClient.from('invoices').select('*', { count: 'exact', head: true });
-                    invNumber = "INV-" + String((count || 0) + 1).padStart(4, '0');
+                    // Smart Number Generation (Prevents 409 duplicate key errors)
+                    const { data: latestInv, error: fetchError } = await supabaseClient.from('invoices')
+                        .select('invoice_number')
+                        .order('created_at', { ascending: false })
+                        .limit(1);
+                        
+                    if (fetchError) throw fetchError;
+
+                    let nextNum = 1;
+                    if (latestInv && latestInv.length > 0 && latestInv[0].invoice_number) {
+                        const numMatch = latestInv[0].invoice_number.match(/\d+$/);
+                        if (numMatch) {
+                            nextNum = parseInt(numMatch[0], 10) + 1;
+                        }
+                    }
+
+                    invNumber = "INV-" + String(nextNum).padStart(4, '0');
                     payload.invoice_number = invNumber;
-                    const { data } = await supabaseClient.from('invoices').insert([payload]).select();
+                    
+                    const { data, error } = await supabaseClient.from('invoices').insert([payload]).select();
+                    if (error) throw error;
+                    
                     invoiceId = data[0].id;
                 }
 
                 for(let item of items) {
                     await supabaseClient.from('invoice_items').insert([{ invoice_id: invoiceId, material_desc: item.name, material_code: item.mcode, category: item.cat, unit: item.unit, quantity: item.qty, unit_price: item.price, total: item.total }]);
-                    // Automatically add new materials to catalog
                     await supabaseClient.from('catalog').upsert({ material_desc: item.name, material_code: item.mcode, category: item.cat, unit: item.unit }, { onConflict: 'material_desc' });
                 }
                 
-                // Automatically add/update customer records
                 await supabaseClient.from('bill_to_customers').upsert({ name: bName, contact: document.getElementById('b_contact').value, address: document.getElementById('b_address').value }, { onConflict: 'name' });
                 if(dName !== bName) {
                     await supabaseClient.from('ship_to_customers').upsert({ name: dName, contact: dContact, address: dAddress }, { onConflict: 'name' });
@@ -681,7 +699,7 @@
 
             } catch (err) {
                 console.error(err); 
-                alert("Error saving invoice. Check console for details."); 
+                alert("Database Error: " + (err.message || "Could not save invoice.")); 
                 btn.innerText = "+ Create Invoice"; 
                 btn.disabled = false;
                 btn.classList.remove('opacity-75');
@@ -820,7 +838,6 @@
                 container.appendChild(row);
             });
             calculateGrandTotal(); 
-            // Scroll smoothly to top
             document.querySelector('.overflow-y-auto').scrollTo({top: 0, behavior: 'smooth'});
         }
 
