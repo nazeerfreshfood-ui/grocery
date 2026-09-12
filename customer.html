@@ -28,6 +28,11 @@
             padding-right: 0;
             border: none;
         }
+        /* Custom Scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
     </style>
 </head>
 <body class="bg-gray-100 flex h-screen overflow-hidden" onload="initApp()">
@@ -40,7 +45,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
         </div>
-        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto custom-scroll">
             <a href="index.html" class="block p-3 md:p-2 hover:bg-gray-700 rounded text-gray-300 transition-colors">Billing</a>
             <a href="material-catalogue.html" class="block p-3 md:p-2 hover:bg-gray-700 rounded text-gray-300 transition-colors">Material Catalogue</a>
             <a href="customer.html" class="block p-3 md:p-2 bg-blue-600 rounded text-white font-medium shadow-sm">Customer</a>
@@ -65,7 +70,7 @@
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col h-full overflow-y-auto w-full relative">
+    <div class="flex-1 flex flex-col h-full overflow-y-auto custom-scroll w-full relative">
         <div class="p-4 md:p-6 w-full max-w-7xl mx-auto">
             
             <!-- Header -->
@@ -89,15 +94,15 @@
 
             <!-- Customer Table -->
             <div class="bg-white p-5 md:p-6 rounded-lg shadow-sm border border-gray-200 mb-10">
-                <div class="overflow-x-auto rounded-lg border border-gray-200">
-                    <table class="w-full border-collapse text-sm min-w-[700px]">
+                <div class="overflow-x-auto rounded-lg border border-gray-200 custom-scroll">
+                    <table class="w-full border-collapse text-sm min-w-[800px]">
                         <thead class="bg-gray-50 border-b border-gray-200 text-gray-700">
                             <tr>
                                 <th class="p-3 text-left font-semibold">Customer Name</th>
                                 <th class="p-3 text-left font-semibold">Contact</th>
                                 <th class="p-3 text-left font-semibold">Address</th>
                                 <th class="p-3 text-right font-semibold">Pending Dues (₹)</th>
-                                <th class="p-3 text-center font-semibold w-40">Actions</th>
+                                <th class="p-3 text-center font-semibold w-56">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="dataTable" class="divide-y divide-gray-200 bg-white">
@@ -125,13 +130,14 @@
             </div>
             
             <!-- Modal Body (Invoices List) -->
-            <div class="p-5 flex-1 overflow-y-auto bg-white">
-                <div class="overflow-x-auto rounded-lg border border-gray-200">
-                    <table class="w-full text-sm text-left">
+            <div class="p-5 flex-1 overflow-y-auto bg-white custom-scroll">
+                <div class="overflow-x-auto rounded-lg border border-gray-200 custom-scroll">
+                    <table class="w-full text-sm text-left min-w-[500px]">
                         <thead class="bg-gray-100 text-gray-700">
                             <tr>
                                 <th class="p-3 font-semibold">Invoice No.</th>
                                 <th class="p-3 font-semibold">Date</th>
+                                <th class="p-3 font-semibold">Description</th>
                                 <th class="p-3 font-semibold text-right">Total Bill</th>
                                 <th class="p-3 font-semibold text-right text-red-600">Pending Amount</th>
                             </tr>
@@ -278,11 +284,12 @@
 
                     return `
                         <tr class="hover:bg-blue-50 transition-colors group">
-                            <td class="p-3 font-bold text-gray-800">${c.name}</td>
+                            <td class="p-3 font-bold text-gray-800 whitespace-nowrap">${c.name}</td>
                             <td class="p-3 text-gray-600">${c.contact || '-'}</td>
                             <td class="p-3 text-gray-600 truncate max-w-xs">${c.address || '-'}</td>
                             <td class="p-3 text-right ${dueColorClass}">₹${pendingDue.toFixed(2)}</td>
-                            <td class="p-3 text-center">
+                            <td class="p-3 text-center whitespace-nowrap">
+                                <button onclick="addPreviousBalance('${safeName}')" class="text-orange-600 hover:text-orange-800 bg-orange-50 hover:bg-orange-100 px-2 py-1.5 rounded mr-1 transition-colors text-xs font-bold uppercase tracking-wider" title="Add Previous Balance">+ Bal</button>
                                 <button onclick="openLedger('${safeName}')" class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-1.5 rounded mr-1 transition-colors text-xs font-bold uppercase tracking-wider" title="View Ledger">Ledger</button>
                                 <button onclick="editCustomer(${c.id}, '${safeName}', '${safeContact}', '${safeAddress}')" class="text-blue-600 hover:text-blue-800 p-1.5 rounded mr-1 transition-colors" title="Edit">✏️</button>
                                 <button onclick="deleteCustomer(${c.id})" class="text-red-600 hover:text-red-800 p-1.5 rounded transition-colors" title="Delete">🗑️</button>
@@ -359,9 +366,47 @@
             }
         }
 
+        /* ----- PREVIOUS BALANCE ----- */
+        async function addPreviousBalance(customerName) {
+            const amountStr = prompt(`Enter previous pending balance amount to add for ${customerName}:`);
+            if (!amountStr) return; // Cancelled or empty
+            
+            const amount = parseFloat(amountStr);
+            if (isNaN(amount) || amount <= 0) {
+                return alert("Please enter a valid positive number.");
+            }
+
+            if (!confirm(`Confirm adding ₹${amount.toFixed(2)} to ${customerName}'s pending dues?`)) return;
+
+            try {
+                // Generate a unique dummy invoice ID for the previous balance
+                const timestamp = new Date().getTime().toString().slice(-6); 
+                const invNumber = "PB-" + timestamp;
+
+                const payload = {
+                    invoice_number: invNumber,
+                    bill_to_name: customerName,
+                    payment_mode: 'Credit',
+                    total_amount: amount,
+                    cash_amount: 0,
+                    credit_amount: amount,
+                    remark: 'Previous Balance Entry'
+                };
+
+                const { error } = await supabaseClient.from('invoices').insert([payload]);
+                if (error) throw error;
+
+                alert("Previous balance added successfully! It will now reflect in the Ledger and Credit Book.");
+                loadData(); 
+
+            } catch (err) {
+                console.error(err);
+                alert("Database Error: Could not add previous balance.");
+            }
+        }
+
 
         /* ----- LEDGER & SETTLEMENT LOGIC ----- */
-        
         async function openLedger(customerName) {
             currentLedgerCustomer = customerName;
             document.getElementById('ledgerCustomerName').innerText = customerName;
@@ -386,12 +431,12 @@
 
         async function loadLedgerInvoices() {
             const tbody = document.getElementById('ledgerInvoicesTable');
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center p-6 text-gray-500">Fetching pending invoices...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-gray-500">Fetching pending invoices...</td></tr>';
             
             try {
                 // Fetch invoices where this customer owes money, sorted oldest to newest
                 const { data, error } = await supabaseClient.from('invoices')
-                    .select('id, invoice_number, created_at, total_amount, credit_amount')
+                    .select('id, invoice_number, created_at, total_amount, credit_amount, remark')
                     .eq('bill_to_name', currentLedgerCustomer)
                     .gt('credit_amount', 0)
                     .order('created_at', { ascending: true });
@@ -402,7 +447,7 @@
                 currentTotalDue = 0;
 
                 if (currentPendingInvoices.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="text-center p-6 text-green-600 font-bold">All clear! No pending dues for this customer.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-green-600 font-bold">All clear! No pending dues for this customer.</td></tr>';
                     document.getElementById('ledgerTotalDue').innerText = "0.00";
                     document.getElementById('settleBtn').disabled = true;
                     document.getElementById('settleBtn').classList.add('opacity-50');
@@ -414,10 +459,14 @@
 
                 tbody.innerHTML = currentPendingInvoices.map(inv => {
                     currentTotalDue += parseFloat(inv.credit_amount);
+                    const isPrevBalance = inv.invoice_number.startsWith('PB-');
+                    const descText = isPrevBalance ? 'Previous Balance Record' : 'Standard Invoice';
+                    
                     return `
-                        <tr class="hover:bg-gray-50">
-                            <td class="p-3 font-bold text-gray-800">#${inv.invoice_number}</td>
+                        <tr class="hover:bg-gray-50 ${isPrevBalance ? 'bg-orange-50/30' : ''}">
+                            <td class="p-3 font-bold ${isPrevBalance ? 'text-orange-600' : 'text-gray-800'}">#${inv.invoice_number}</td>
                             <td class="p-3 text-gray-600">${new Date(inv.created_at).toLocaleDateString('en-GB')}</td>
+                            <td class="p-3 text-gray-500 text-xs uppercase font-medium">${descText}</td>
                             <td class="p-3 text-right text-gray-600">₹${inv.total_amount.toFixed(2)}</td>
                             <td class="p-3 text-right text-red-600 font-bold">₹${inv.credit_amount.toFixed(2)}</td>
                         </tr>
@@ -428,7 +477,7 @@
 
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center p-6 text-red-600">Error loading ledger.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-red-600">Error loading ledger.</td></tr>';
             }
         }
 
@@ -468,7 +517,7 @@
                     if (updateError) throw updateError;
                 }
 
-                // 2. Log entry into Cashbook (Optional but recommended for accounting)
+                // 2. Log entry into Cashbook
                 try {
                     await supabaseClient.from('cashbook_entries').insert([{
                         created_by: currentUserEmail,
@@ -478,7 +527,6 @@
                     }]);
                 } catch (cbError) {
                     console.warn("Cashbook log skipped or failed:", cbError);
-                    // Non-fatal error, continue
                 }
 
                 // Success
