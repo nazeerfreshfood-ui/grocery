@@ -13,7 +13,7 @@
             overflow-x: hidden;
             white-space: nowrap;
             position: absolute;
-            z-index: 40;
+            z-index: 50;
             height: 100%;
         }
         @media (min-width: 768px) {
@@ -444,9 +444,24 @@
             btn.innerText = 'Saving...';
 
             try {
-                // Generate a unique dummy invoice ID for the previous balance
-                const timestamp = new Date().getTime().toString().slice(-6); 
-                const invNumber = "PB-" + timestamp;
+                // Smart Number Generation exclusively for PB- series
+                const { data: latestPb, error: fetchError } = await supabaseClient.from('invoices')
+                    .select('invoice_number')
+                    .like('invoice_number', 'PB-%')
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+                    
+                if (fetchError) throw fetchError;
+
+                let nextNum = 1;
+                if (latestPb && latestPb.length > 0 && latestPb[0].invoice_number) {
+                    const numMatch = latestPb[0].invoice_number.match(/\d+$/);
+                    if (numMatch) {
+                        nextNum = parseInt(numMatch[0], 10) + 1;
+                    }
+                }
+
+                const invNumber = "PB-" + String(nextNum).padStart(4, '0');
 
                 const payload = {
                     invoice_number: invNumber,
@@ -494,7 +509,7 @@
             modal.classList.remove('flex');
             currentLedgerCustomer = '';
             currentPendingInvoices = [];
-            resetAllTimers(); 
+            resetAllTimers(); // Reset timer so sidebar doesn't hide while interacting
         }
 
         async function loadLedgerInvoices() {
