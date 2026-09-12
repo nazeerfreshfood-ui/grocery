@@ -603,7 +603,7 @@
             calculateGrandTotal();
         }
 
-        /* ----- SAVE & PRINT (WITH SMART NUMBERING & 409 CONFLICT FIX) ----- */
+        /* ----- SAVE & PRINT (WITH SMART NUMBERING & FK FIX) ----- */
         async function saveAndPrint() {
             const bName = document.getElementById('b_name').value.trim();
             if(!bName) return alert("Please enter Customer Name");
@@ -641,6 +641,12 @@
                     cr_amount = totalAmount; 
                 } else {
                     c_amount = totalAmount; 
+                }
+
+                // CRITICAL FIX: Save Customers FIRST to satisfy Foreign Key Constraints
+                await supabaseClient.from('bill_to_customers').upsert({ name: bName, contact: document.getElementById('b_contact').value, address: document.getElementById('b_address').value }, { onConflict: 'name' });
+                if(dName !== bName) {
+                    await supabaseClient.from('ship_to_customers').upsert({ name: dName, contact: dContact, address: dAddress }, { onConflict: 'name' });
                 }
 
                 let payload = { 
@@ -684,14 +690,10 @@
                     invoiceId = data[0].id;
                 }
 
+                // Insert Items and Catalog
                 for(let item of items) {
                     await supabaseClient.from('invoice_items').insert([{ invoice_id: invoiceId, material_desc: item.name, material_code: item.mcode, category: item.cat, unit: item.unit, quantity: item.qty, unit_price: item.price, total: item.total }]);
                     await supabaseClient.from('catalog').upsert({ material_desc: item.name, material_code: item.mcode, category: item.cat, unit: item.unit }, { onConflict: 'material_desc' });
-                }
-                
-                await supabaseClient.from('bill_to_customers').upsert({ name: bName, contact: document.getElementById('b_contact').value, address: document.getElementById('b_address').value }, { onConflict: 'name' });
-                if(dName !== bName) {
-                    await supabaseClient.from('ship_to_customers').upsert({ name: dName, contact: dContact, address: dAddress }, { onConflict: 'name' });
                 }
 
                 triggerPrint(invNumber, pMode, bName, document.getElementById('b_contact').value, document.getElementById('b_address').value, dName, dContact, dAddress, items, totalAmount, remark, c_amount, cr_amount);
@@ -838,6 +840,7 @@
                 container.appendChild(row);
             });
             calculateGrandTotal(); 
+            // Scroll smoothly to top
             document.querySelector('.overflow-y-auto').scrollTo({top: 0, behavior: 'smooth'});
         }
 
