@@ -13,7 +13,7 @@
             overflow-x: hidden;
             white-space: nowrap;
             position: absolute;
-            z-index: 50;
+            z-index: 40;
             height: 100%;
         }
         @media (min-width: 768px) {
@@ -114,6 +114,40 @@
         </div>
     </div>
 
+    <!-- PREVIOUS BALANCE MODAL -->
+    <div id="pbModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
+            <!-- Modal Header -->
+            <div class="p-5 border-b flex justify-between items-center bg-gray-50">
+                <h2 class="text-xl font-extrabold text-gray-800">Add Previous Balance</h2>
+                <button onclick="closePbModal()" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-5 flex flex-col gap-4">
+                <p class="text-sm text-gray-600">Adding pending balance for: <span id="pbCustomerName" class="font-bold text-orange-600 text-lg block mt-1"></span></p>
+                
+                <div>
+                    <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">Amount (₹) *</label>
+                    <input type="number" id="pbAmount" placeholder="0.00" class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-orange-500 outline-none font-semibold text-lg">
+                </div>
+                
+                <div>
+                    <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">Notes / Remarks (Optional)</label>
+                    <textarea id="pbNote" placeholder="e.g. Opening balance from old book..." class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-orange-500 outline-none text-sm" rows="3"></textarea>
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="p-5 border-t bg-gray-50 flex justify-end gap-3">
+                <button onclick="closePbModal()" class="px-5 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-200 transition-colors">Cancel</button>
+                <button onclick="savePreviousBalance()" id="pbSaveBtn" class="bg-orange-600 text-white px-6 py-2.5 rounded-lg hover:bg-orange-700 font-bold transition-colors shadow-md">Save Balance</button>
+            </div>
+        </div>
+    </div>
+
     <!-- LEDGER MODAL (Hidden by default) -->
     <div id="ledgerModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -137,7 +171,7 @@
                             <tr>
                                 <th class="p-3 font-semibold">Invoice No.</th>
                                 <th class="p-3 font-semibold">Date</th>
-                                <th class="p-3 font-semibold">Description</th>
+                                <th class="p-3 font-semibold">Description / Note</th>
                                 <th class="p-3 font-semibold text-right">Total Bill</th>
                                 <th class="p-3 font-semibold text-right text-red-600">Pending Amount</th>
                             </tr>
@@ -178,6 +212,7 @@
         
         // Ledger State
         let currentLedgerCustomer = '';
+        let currentPbCustomer = ''; // For Previous Balance
         let currentPendingInvoices = [];
         let currentTotalDue = 0;
 
@@ -229,7 +264,10 @@
             clearTimeout(sidebarTimer);
             sidebarTimer = setTimeout(() => {
                 const sb = document.getElementById('sidebar');
-                if (sb && !document.getElementById('ledgerModal').classList.contains('flex')) {
+                const isLedgerOpen = document.getElementById('ledgerModal').classList.contains('flex');
+                const isPbOpen = document.getElementById('pbModal').classList.contains('flex');
+                
+                if (sb && !isLedgerOpen && !isPbOpen) {
                     sb.classList.add('collapsed');
                 }
             }, 30000); 
@@ -366,17 +404,44 @@
             }
         }
 
-        /* ----- PREVIOUS BALANCE ----- */
-        async function addPreviousBalance(customerName) {
-            const amountStr = prompt(`Enter previous pending balance amount to add for ${customerName}:`);
-            if (!amountStr) return; // Cancelled or empty
+        /* ----- PREVIOUS BALANCE LOGIC ----- */
+        function addPreviousBalance(customerName) {
+            currentPbCustomer = customerName;
+            document.getElementById('pbCustomerName').innerText = customerName;
+            document.getElementById('pbAmount').value = '';
+            document.getElementById('pbNote').value = '';
             
+            // Show modal
+            document.getElementById('pbModal').classList.remove('hidden');
+            document.getElementById('pbModal').classList.add('flex');
+            resetAllTimers(); 
+        }
+
+        function closePbModal() {
+            document.getElementById('pbModal').classList.add('hidden');
+            document.getElementById('pbModal').classList.remove('flex');
+            currentPbCustomer = '';
+        }
+
+        async function savePreviousBalance() {
+            const amountStr = document.getElementById('pbAmount').value;
+            let note = document.getElementById('pbNote').value.trim();
+            const btn = document.getElementById('pbSaveBtn');
+
             const amount = parseFloat(amountStr);
             if (isNaN(amount) || amount <= 0) {
-                return alert("Please enter a valid positive number.");
+                return alert("Please enter a valid positive amount.");
             }
 
-            if (!confirm(`Confirm adding ₹${amount.toFixed(2)} to ${customerName}'s pending dues?`)) return;
+            // Append prefix so it's clear in the ledger
+            if (!note) {
+                note = 'Previous Balance Entry';
+            } else {
+                note = 'Previous Balance: ' + note;
+            }
+
+            btn.disabled = true;
+            btn.innerText = 'Saving...';
 
             try {
                 // Generate a unique dummy invoice ID for the previous balance
@@ -385,23 +450,26 @@
 
                 const payload = {
                     invoice_number: invNumber,
-                    bill_to_name: customerName,
+                    bill_to_name: currentPbCustomer,
                     payment_mode: 'Credit',
                     total_amount: amount,
                     cash_amount: 0,
                     credit_amount: amount,
-                    remark: 'Previous Balance Entry'
+                    remark: note
                 };
 
                 const { error } = await supabaseClient.from('invoices').insert([payload]);
                 if (error) throw error;
 
-                alert("Previous balance added successfully! It will now reflect in the Ledger and Credit Book.");
-                loadData(); 
+                closePbModal();
+                loadData(); // Refresh the table
 
             } catch (err) {
                 console.error(err);
                 alert("Database Error: Could not add previous balance.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Save Balance';
             }
         }
 
@@ -426,7 +494,7 @@
             modal.classList.remove('flex');
             currentLedgerCustomer = '';
             currentPendingInvoices = [];
-            resetAllTimers(); // Reset timer so sidebar doesn't hide while interacting
+            resetAllTimers(); 
         }
 
         async function loadLedgerInvoices() {
@@ -460,13 +528,13 @@
                 tbody.innerHTML = currentPendingInvoices.map(inv => {
                     currentTotalDue += parseFloat(inv.credit_amount);
                     const isPrevBalance = inv.invoice_number.startsWith('PB-');
-                    const descText = isPrevBalance ? 'Previous Balance Record' : 'Standard Invoice';
+                    const descText = isPrevBalance ? (inv.remark || 'Previous Balance Record') : (inv.remark ? `Invoice Note: ${inv.remark}` : 'Standard Invoice');
                     
                     return `
                         <tr class="hover:bg-gray-50 ${isPrevBalance ? 'bg-orange-50/30' : ''}">
                             <td class="p-3 font-bold ${isPrevBalance ? 'text-orange-600' : 'text-gray-800'}">#${inv.invoice_number}</td>
                             <td class="p-3 text-gray-600">${new Date(inv.created_at).toLocaleDateString('en-GB')}</td>
-                            <td class="p-3 text-gray-500 text-xs uppercase font-medium">${descText}</td>
+                            <td class="p-3 text-gray-500 text-xs font-medium max-w-xs truncate" title="${descText}">${descText}</td>
                             <td class="p-3 text-right text-gray-600">₹${inv.total_amount.toFixed(2)}</td>
                             <td class="p-3 text-right text-red-600 font-bold">₹${inv.credit_amount.toFixed(2)}</td>
                         </tr>
