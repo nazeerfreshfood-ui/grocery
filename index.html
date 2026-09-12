@@ -665,9 +665,10 @@
                     invNumber = data[0].invoice_number;
                     await supabaseClient.from('invoice_items').delete().eq('invoice_id', invoiceId);
                 } else {
-                    // Smart Number Generation (Prevents 409 duplicate key errors)
+                    // Smart Number Generation: Fetch ONLY standard invoices ('INV-') to prevent jumping to PB- sequences
                     const { data: latestInv, error: fetchError } = await supabaseClient.from('invoices')
                         .select('invoice_number')
+                        .like('invoice_number', 'INV-%')
                         .order('created_at', { ascending: false })
                         .limit(1);
                         
