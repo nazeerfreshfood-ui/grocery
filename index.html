@@ -44,7 +44,9 @@
         @media (min-width: 768px) {
             .item-row-grid {
                 display: flex;
+                flex-wrap: wrap; /* Prevents squishing on smaller desktops */
                 gap: 0.5rem;
+                align-items: flex-start;
             }
         }
 
@@ -232,6 +234,7 @@
     </div>
 
     <!-- INVOICE PRINT TEMPLATE (Hidden from screen) -->
+    <!-- Note: Maintained your exact original 7 column table structure here. Remark displays cleanly beneath description. -->
     <div id="print-section" class="bg-white p-8 hidden text-sm font-sans">
         <div class="text-center mb-4">
             <h1 class="text-2xl font-extrabold uppercase mb-1">Nazeer Fresh Food Market</h1>
@@ -279,11 +282,10 @@
                     <th class="border border-black p-2 w-10 text-center font-bold">Sl</th>
                     <th class="border border-black p-2 w-20 font-bold">Mat. Code</th>
                     <th class="border border-black p-2 font-bold">Material Description</th>
-                    <th class="border border-black p-2 font-bold w-24">Item Remark</th>
                     <th class="border border-black p-2 text-center w-12 font-bold">Unit</th>
-                    <th class="border border-black p-2 text-center w-12 font-bold">Qty</th>
-                    <th class="border border-black p-2 text-right w-16 font-bold">Price</th>
-                    <th class="border border-black p-2 text-right w-20 font-bold">Amount</th>
+                    <th class="border border-black p-2 text-center w-16 font-bold">Qty</th>
+                    <th class="border border-black p-2 text-right w-20 font-bold">Price</th>
+                    <th class="border border-black p-2 text-right w-24 font-bold">Amount</th>
                 </tr>
             </thead>
             <tbody id="p_items_body"></tbody>
@@ -544,6 +546,7 @@
             document.getElementById('split_credit').value = pendingCredit >= 0 ? pendingCredit.toFixed(2) : '0.00';
         }
 
+        /* Fixed item spacing width distribution */
         function addItemRow() {
             const container = document.getElementById('items-container');
             const row = document.createElement('div');
@@ -557,37 +560,37 @@
                     <div class="material-dropdown absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b shadow-xl max-h-60 overflow-y-auto hidden z-50 custom-scroll mt-1"></div>
                 </div>
                 
-                <div class="md:w-24">
+                <div class="col-span-1 md:w-20">
                     <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Code</label>
                     <input type="text" placeholder="Code" class="border border-gray-300 p-2.5 rounded w-full i-mcode focus:ring-2 focus:ring-blue-500 outline-none text-sm">
                 </div>
                 
-                <div class="md:w-24">
+                <div class="col-span-1 md:w-20">
                     <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Category</label>
                     <input type="text" placeholder="Cat." class="border border-gray-300 p-2.5 rounded w-full i-cat focus:ring-2 focus:ring-blue-500 outline-none text-sm">
                 </div>
                 
-                <div class="md:w-20">
+                <div class="col-span-1 md:w-16">
                     <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Unit</label>
                     <select class="border border-gray-300 p-2.5 rounded w-full i-unit focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"><option value="Kg">Kg</option><option value="Ltr">Ltr</option><option value="Num">Num</option></select>
                 </div>
                 
-                <div class="md:w-20">
+                <div class="col-span-1 md:w-16">
                     <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Qty *</label>
                     <input type="number" placeholder="Qty" class="border border-gray-300 p-2.5 rounded w-full i-qty focus:ring-2 focus:ring-blue-500 outline-none text-sm font-semibold" oninput="calculateRow(this)">
                 </div>
                 
-                <div class="md:w-20">
+                <div class="col-span-1 md:w-20">
                     <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Price *</label>
                     <input type="number" placeholder="₹ Rate" class="border border-gray-300 p-2.5 rounded w-full i-price focus:ring-2 focus:ring-blue-500 outline-none text-sm" oninput="calculateRow(this)">
                 </div>
                 
-                <div class="md:w-32">
-                    <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Remark</label>
+                <div class="col-span-1 md:w-32">
+                    <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Item Remark</label>
                     <input type="text" placeholder="Note" class="border border-gray-300 p-2.5 rounded w-full i-remark focus:ring-2 focus:ring-blue-500 outline-none text-sm">
                 </div>
 
-                <div class="col-span-2 md:col-span-1 md:w-28 mt-2 md:mt-0">
+                <div class="col-span-2 md:w-24 mt-2 md:mt-0">
                     <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Total Amount</label>
                     <input type="text" placeholder="Total" class="border border-gray-300 p-2.5 rounded w-full i-total bg-gray-200 font-bold text-gray-800 outline-none text-sm" readonly>
                 </div>
@@ -734,6 +737,7 @@
             }
         }
 
+        // Print layout restored to original column structure to prevent broken views
         function triggerPrint(invNum, pMode, bName, bContact, bAddress, dName, dContact, dAddress, items, total, remark = '', cashAmt = 0, creditAmt = 0) {
             document.getElementById('p_inv_no').innerText = invNum;
             document.getElementById('p_date').innerText = new Date().toLocaleDateString();
@@ -764,11 +768,12 @@
 
             const tbody = document.getElementById('p_items_body'); tbody.innerHTML = '';
             items.forEach((item, i) => {
+                // Elegantly append the remark inside the material description column so the table structure stays perfect
+                const remarkHtml = item.remark ? `<br><span class="text-[11px] italic text-gray-600 font-normal">Note: ${item.remark}</span>` : '';
                 tbody.innerHTML += `<tr>
                     <td class="p-2 border border-black text-center">${i + 1}</td>
                     <td class="p-2 border border-black">${item.mcode || '-'}</td>
-                    <td class="p-2 border border-black font-semibold">${item.name}</td>
-                    <td class="p-2 border border-black text-sm">${item.remark || '-'}</td>
+                    <td class="p-2 border border-black font-semibold">${item.name}${remarkHtml}</td>
                     <td class="p-2 border border-black text-center">${item.unit}</td>
                     <td class="p-2 border border-black text-center font-bold">${item.qty}</td>
                     <td class="p-2 border border-black text-right">₹${item.price.toFixed(2)}</td>
@@ -834,37 +839,37 @@
                         <div class="material-dropdown absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b shadow-xl max-h-60 overflow-y-auto hidden z-50 custom-scroll mt-1"></div>
                     </div>
                     
-                    <div class="md:w-24">
+                    <div class="col-span-1 md:w-20">
                         <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Code</label>
                         <input type="text" value="${item.material_code || ''}" class="border border-gray-300 p-2.5 rounded w-full i-mcode focus:ring-2 focus:ring-blue-500 outline-none text-sm">
                     </div>
                     
-                    <div class="md:w-24">
+                    <div class="col-span-1 md:w-20">
                         <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Category</label>
                         <input type="text" value="${item.category || ''}" class="border border-gray-300 p-2.5 rounded w-full i-cat focus:ring-2 focus:ring-blue-500 outline-none text-sm">
                     </div>
                     
-                    <div class="md:w-20">
+                    <div class="col-span-1 md:w-16">
                         <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Unit</label>
                         <select class="border border-gray-300 p-2.5 rounded w-full i-unit focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"><option value="Kg" ${item.unit=='Kg'?'selected':''}>Kg</option><option value="Ltr" ${item.unit=='Ltr'?'selected':''}>Ltr</option><option value="Num" ${item.unit=='Num'?'selected':''}>Num</option></select>
                     </div>
                     
-                    <div class="md:w-20">
+                    <div class="col-span-1 md:w-16">
                         <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Qty *</label>
                         <input type="number" value="${item.quantity}" class="border border-gray-300 p-2.5 rounded w-full i-qty focus:ring-2 focus:ring-blue-500 outline-none text-sm font-semibold" oninput="calculateRow(this)">
                     </div>
                     
-                    <div class="md:w-20">
+                    <div class="col-span-1 md:w-20">
                         <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Price *</label>
                         <input type="number" value="${item.unit_price}" class="border border-gray-300 p-2.5 rounded w-full i-price focus:ring-2 focus:ring-blue-500 outline-none text-sm" oninput="calculateRow(this)">
                     </div>
 
-                    <div class="md:w-32">
-                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Remark</label>
+                    <div class="col-span-1 md:w-32">
+                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Item Remark</label>
                         <input type="text" value="${item.remark || ''}" placeholder="Note" class="border border-gray-300 p-2.5 rounded w-full i-remark focus:ring-2 focus:ring-blue-500 outline-none text-sm">
                     </div>
                     
-                    <div class="col-span-2 md:col-span-1 md:w-28 mt-2 md:mt-0">
+                    <div class="col-span-2 md:w-24 mt-2 md:mt-0">
                         <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Total Amount</label>
                         <input type="text" value="${item.total}" class="border border-gray-300 p-2.5 rounded w-full i-total bg-gray-200 font-bold text-gray-800 outline-none text-sm" readonly>
                     </div>
