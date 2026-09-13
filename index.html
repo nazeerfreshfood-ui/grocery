@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Billing - Nazeer Fresh Food</title>
+    <!-- Favicon 404 Fix -->
+    <link rel="icon" href="data:,">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -48,7 +51,7 @@
         @media (min-width: 768px) {
             .item-row-grid {
                 display: flex;
-                flex-wrap: wrap;
+                flex-wrap: wrap; /* Prevents squishing on smaller desktops */
                 gap: 0.5rem;
                 align-items: flex-start;
             }
@@ -238,6 +241,7 @@
     </div>
 
     <!-- INVOICE PRINT TEMPLATE (CSS Media Queries handle showing/hiding safely now) -->
+    <!-- Note: Maintained your exact original 7 column table structure here. Remark displays cleanly beneath description. -->
     <div id="print-section" class="bg-white p-8 text-sm font-sans">
         <div class="text-center mb-4">
             <h1 class="text-2xl font-extrabold uppercase mb-1">Nazeer Fresh Food Market</h1>
@@ -664,11 +668,9 @@
                     c_amount = totalAmount; 
                 }
 
-                // CRITICAL FIX: Save Customers FIRST to satisfy Foreign Key Constraints
+                // CRITICAL FIX: ALWAYS save to both tables to prevent Foreign Key crashes
                 await supabaseClient.from('bill_to_customers').upsert({ name: bName, contact: document.getElementById('b_contact').value, address: document.getElementById('b_address').value }, { onConflict: 'name' });
-                if(dName !== bName) {
-                    await supabaseClient.from('ship_to_customers').upsert({ name: dName, contact: dContact, address: dAddress }, { onConflict: 'name' });
-                }
+                await supabaseClient.from('ship_to_customers').upsert({ name: dName, contact: dContact, address: dAddress }, { onConflict: 'name' });
 
                 let payload = { 
                     bill_to_name: bName, bill_to_contact: document.getElementById('b_contact').value, bill_to_address: document.getElementById('b_address').value, 
@@ -686,7 +688,7 @@
                     invNumber = data[0].invoice_number;
                     await supabaseClient.from('invoice_items').delete().eq('invoice_id', invoiceId);
                 } else {
-                    // Smart Number Generation: Fetch ONLY standard invoices ('INV-') to prevent jumping to PB- sequences
+                    // Smart Number Generation
                     const { data: latestInv, error: fetchError } = await supabaseClient.from('invoices')
                         .select('invoice_number')
                         .like('invoice_number', 'INV-%')
@@ -725,7 +727,7 @@
                         remark: item.remark,
                         total: item.total 
                     }]);
-                    if(itemErr) throw itemErr; // Will trigger alert if remark column is missing in DB
+                    if(itemErr) throw itemErr; 
                     
                     await supabaseClient.from('catalog').upsert({ material_desc: item.name, material_code: item.mcode, category: item.cat, unit: item.unit }, { onConflict: 'material_desc' });
                 }
@@ -734,8 +736,8 @@
                 setTimeout(() => window.location.reload(), 1500);
 
             } catch (err) {
-                console.error(err); 
-                alert("Database Error: " + (err.message || "Could not save invoice. Ensure 'remark' column exists in invoice_items table.")); 
+                console.error("FULL ERROR LOG:", err); 
+                alert("Database Error: " + (err.message || JSON.stringify(err))); 
                 btn.innerText = "+ Create Invoice"; 
                 btn.disabled = false;
                 btn.classList.remove('opacity-75');
