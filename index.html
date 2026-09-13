@@ -279,10 +279,11 @@
                     <th class="border border-black p-2 w-10 text-center font-bold">Sl</th>
                     <th class="border border-black p-2 w-20 font-bold">Mat. Code</th>
                     <th class="border border-black p-2 font-bold">Material Description</th>
+                    <th class="border border-black p-2 font-bold w-24">Item Remark</th>
                     <th class="border border-black p-2 text-center w-12 font-bold">Unit</th>
-                    <th class="border border-black p-2 text-center w-16 font-bold">Qty</th>
-                    <th class="border border-black p-2 text-right w-20 font-bold">Price</th>
-                    <th class="border border-black p-2 text-right w-24 font-bold">Amount</th>
+                    <th class="border border-black p-2 text-center w-12 font-bold">Qty</th>
+                    <th class="border border-black p-2 text-right w-16 font-bold">Price</th>
+                    <th class="border border-black p-2 text-right w-20 font-bold">Amount</th>
                 </tr>
             </thead>
             <tbody id="p_items_body"></tbody>
@@ -576,11 +577,16 @@
                     <input type="number" placeholder="Qty" class="border border-gray-300 p-2.5 rounded w-full i-qty focus:ring-2 focus:ring-blue-500 outline-none text-sm font-semibold" oninput="calculateRow(this)">
                 </div>
                 
-                <div class="md:w-24">
+                <div class="md:w-20">
                     <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Price *</label>
                     <input type="number" placeholder="₹ Rate" class="border border-gray-300 p-2.5 rounded w-full i-price focus:ring-2 focus:ring-blue-500 outline-none text-sm" oninput="calculateRow(this)">
                 </div>
                 
+                <div class="md:w-32">
+                    <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Remark</label>
+                    <input type="text" placeholder="Note" class="border border-gray-300 p-2.5 rounded w-full i-remark focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+
                 <div class="col-span-2 md:col-span-1 md:w-28 mt-2 md:mt-0">
                     <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Total Amount</label>
                     <input type="text" placeholder="Total" class="border border-gray-300 p-2.5 rounded w-full i-total bg-gray-200 font-bold text-gray-800 outline-none text-sm" readonly>
@@ -614,7 +620,16 @@
                 const name = row.querySelector('.i-name').value.trim();
                 if(name && (parseFloat(row.querySelector('.i-qty').value) || 0) > 0) {
                     let total = parseFloat(row.querySelector('.i-total').value) || 0;
-                    items.push({ name, mcode: row.querySelector('.i-mcode').value.trim(), cat: row.querySelector('.i-cat').value.trim(), unit: row.querySelector('.i-unit').value, qty: parseFloat(row.querySelector('.i-qty').value) || 0, price: parseFloat(row.querySelector('.i-price').value) || 0, total });
+                    items.push({ 
+                        name, 
+                        mcode: row.querySelector('.i-mcode').value.trim(), 
+                        cat: row.querySelector('.i-cat').value.trim(), 
+                        unit: row.querySelector('.i-unit').value, 
+                        qty: parseFloat(row.querySelector('.i-qty').value) || 0, 
+                        price: parseFloat(row.querySelector('.i-price').value) || 0, 
+                        remark: row.querySelector('.i-remark').value.trim(),
+                        total 
+                    });
                     totalAmount += total;
                 }
             });
@@ -693,7 +708,17 @@
 
                 // Insert Items and Catalog
                 for(let item of items) {
-                    await supabaseClient.from('invoice_items').insert([{ invoice_id: invoiceId, material_desc: item.name, material_code: item.mcode, category: item.cat, unit: item.unit, quantity: item.qty, unit_price: item.price, total: item.total }]);
+                    await supabaseClient.from('invoice_items').insert([{ 
+                        invoice_id: invoiceId, 
+                        material_desc: item.name, 
+                        material_code: item.mcode, 
+                        category: item.cat, 
+                        unit: item.unit, 
+                        quantity: item.qty, 
+                        unit_price: item.price, 
+                        remark: item.remark,
+                        total: item.total 
+                    }]);
                     await supabaseClient.from('catalog').upsert({ material_desc: item.name, material_code: item.mcode, category: item.cat, unit: item.unit }, { onConflict: 'material_desc' });
                 }
 
@@ -743,6 +768,7 @@
                     <td class="p-2 border border-black text-center">${i + 1}</td>
                     <td class="p-2 border border-black">${item.mcode || '-'}</td>
                     <td class="p-2 border border-black font-semibold">${item.name}</td>
+                    <td class="p-2 border border-black text-sm">${item.remark || '-'}</td>
                     <td class="p-2 border border-black text-center">${item.unit}</td>
                     <td class="p-2 border border-black text-center font-bold">${item.qty}</td>
                     <td class="p-2 border border-black text-right">₹${item.price.toFixed(2)}</td>
@@ -828,9 +854,14 @@
                         <input type="number" value="${item.quantity}" class="border border-gray-300 p-2.5 rounded w-full i-qty focus:ring-2 focus:ring-blue-500 outline-none text-sm font-semibold" oninput="calculateRow(this)">
                     </div>
                     
-                    <div class="md:w-24">
+                    <div class="md:w-20">
                         <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Price *</label>
                         <input type="number" value="${item.unit_price}" class="border border-gray-300 p-2.5 rounded w-full i-price focus:ring-2 focus:ring-blue-500 outline-none text-sm" oninput="calculateRow(this)">
+                    </div>
+
+                    <div class="md:w-32">
+                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Remark</label>
+                        <input type="text" value="${item.remark || ''}" placeholder="Note" class="border border-gray-300 p-2.5 rounded w-full i-remark focus:ring-2 focus:ring-blue-500 outline-none text-sm">
                     </div>
                     
                     <div class="col-span-2 md:col-span-1 md:w-28 mt-2 md:mt-0">
@@ -848,7 +879,7 @@
         async function reprintInvoice(id) {
             const { data: inv } = await supabaseClient.from('invoices').select('*').eq('id', id).single();
             const { data: items } = await supabaseClient.from('invoice_items').select('*').eq('invoice_id', id);
-            let fItems = items.map(i => ({ name: i.material_desc, mcode: i.material_code, unit: i.unit, qty: i.quantity, price: i.unit_price, total: i.total }));
+            let fItems = items.map(i => ({ name: i.material_desc, mcode: i.material_code, unit: i.unit, qty: i.quantity, price: i.unit_price, remark: i.remark, total: i.total }));
             triggerPrint(inv.invoice_number, inv.payment_mode, inv.bill_to_name, inv.bill_to_contact, inv.bill_to_address, inv.deliver_to_name, inv.deliver_to_contact, inv.deliver_to_address, fItems, inv.total_amount, inv.remark, inv.cash_amount, inv.credit_amount);
         }
 
