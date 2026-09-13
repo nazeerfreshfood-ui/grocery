@@ -7,6 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        /* 100% Reliable Print CSS */
+        @media screen {
+            #print-section { display: none !important; }
+        }
         @media print {
             .no-print { display: none !important; }
             #print-section { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
@@ -44,7 +48,7 @@
         @media (min-width: 768px) {
             .item-row-grid {
                 display: flex;
-                flex-wrap: wrap; /* Prevents squishing on smaller desktops */
+                flex-wrap: wrap;
                 gap: 0.5rem;
                 align-items: flex-start;
             }
@@ -233,9 +237,8 @@
         </div>
     </div>
 
-    <!-- INVOICE PRINT TEMPLATE (Hidden from screen) -->
-    <!-- Note: Maintained your exact original 7 column table structure here. Remark displays cleanly beneath description. -->
-    <div id="print-section" class="bg-white p-8 hidden text-sm font-sans">
+    <!-- INVOICE PRINT TEMPLATE (CSS Media Queries handle showing/hiding safely now) -->
+    <div id="print-section" class="bg-white p-8 text-sm font-sans">
         <div class="text-center mb-4">
             <h1 class="text-2xl font-extrabold uppercase mb-1">Nazeer Fresh Food Market</h1>
             <p class="text-sm font-normal text-gray-600">Bill of Supply</p> 
@@ -711,7 +714,7 @@
 
                 // Insert Items and Catalog
                 for(let item of items) {
-                    await supabaseClient.from('invoice_items').insert([{ 
+                    const { error: itemErr } = await supabaseClient.from('invoice_items').insert([{ 
                         invoice_id: invoiceId, 
                         material_desc: item.name, 
                         material_code: item.mcode, 
@@ -722,6 +725,8 @@
                         remark: item.remark,
                         total: item.total 
                     }]);
+                    if(itemErr) throw itemErr; // Will trigger alert if remark column is missing in DB
+                    
                     await supabaseClient.from('catalog').upsert({ material_desc: item.name, material_code: item.mcode, category: item.cat, unit: item.unit }, { onConflict: 'material_desc' });
                 }
 
@@ -730,7 +735,7 @@
 
             } catch (err) {
                 console.error(err); 
-                alert("Database Error: " + (err.message || "Could not save invoice.")); 
+                alert("Database Error: " + (err.message || "Could not save invoice. Ensure 'remark' column exists in invoice_items table.")); 
                 btn.innerText = "+ Create Invoice"; 
                 btn.disabled = false;
                 btn.classList.remove('opacity-75');
@@ -757,8 +762,8 @@
             // Handle Split Banner
             const pSplitBanner = document.getElementById('p_split_banner');
             if (pMode === 'Split') {
-                document.getElementById('p_split_cash_amt').innerText = cashAmt.toFixed(2);
-                document.getElementById('p_split_credit_amt').innerText = creditAmt.toFixed(2);
+                document.getElementById('p_split_cash_amt').innerText = (cashAmt || 0).toFixed(2);
+                document.getElementById('p_split_credit_amt').innerText = (creditAmt || 0).toFixed(2);
                 pSplitBanner.classList.remove('hidden');
                 pSplitBanner.classList.add('flex');
             } else {
@@ -789,6 +794,7 @@
             const tbody = document.getElementById('savedInvoicesList');
             const { data, count } = await supabaseClient.from('invoices').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(offset, offset + limitPerPage - 1);
             
+            // Added quotes around the ID to prevent UUID syntax errors
             tbody.innerHTML = (data||[]).map(inv => `
                 <tr class="hover:bg-blue-50 transition-colors">
                     <td class="p-3 font-bold text-gray-800">${inv.invoice_number}</td>
@@ -799,8 +805,8 @@
                     </td>
                     <td class="p-3 text-right font-bold text-gray-800">₹${inv.total_amount.toFixed(2)}</td>
                     <td class="p-3 text-center">
-                        <button onclick="editInvoice(${inv.id})" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 p-1.5 rounded mr-1 transition-colors" title="Edit">✏️</button>
-                        <button onclick="reprintInvoice(${inv.id})" class="text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 p-1.5 rounded transition-colors" title="Reprint">🖨️</button>
+                        <button onclick="editInvoice('${inv.id}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 p-1.5 rounded mr-1 transition-colors" title="Edit">✏️</button>
+                        <button onclick="reprintInvoice('${inv.id}')" class="text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 p-1.5 rounded transition-colors" title="Reprint">🖨️</button>
                     </td>
                 </tr>`).join('');
                 
@@ -810,82 +816,99 @@
         }
 
         async function editInvoice(id) {
-            const { data: inv } = await supabaseClient.from('invoices').select('*').eq('id', id).single();
-            const { data: items } = await supabaseClient.from('invoice_items').select('*').eq('invoice_id', id);
-            
-            document.getElementById('editing_invoice_id').value = inv.id;
-            document.getElementById('invoiceFormTitle').innerHTML = `Editing Invoice: <span class="text-blue-600">${inv.invoice_number}</span>`;
-            document.getElementById('b_name').value = inv.bill_to_name; document.getElementById('b_contact').value = inv.bill_to_contact; document.getElementById('b_address').value = inv.bill_to_address;
-            document.getElementById('d_name').value = inv.deliver_to_name; document.getElementById('d_contact').value = inv.deliver_to_contact; document.getElementById('d_address').value = inv.deliver_to_address;
-            
-            document.getElementById('invoice_remark').value = inv.remark || '';
-            document.getElementById('payment_mode').value = inv.payment_mode;
-            
-            if(inv.payment_mode === 'Split') {
-                document.getElementById('split_cash').value = inv.cash_amount || '';
-                document.getElementById('split_credit').value = inv.credit_amount || '';
-            }
-            toggleSplitPayment();
-
-            const container = document.getElementById('items-container'); container.innerHTML = '';
-            items.forEach(item => {
-                const row = document.createElement('div'); 
-                row.className = 'item-row-grid mb-3 item-row bg-gray-50 md:bg-transparent p-4 md:p-0 rounded-lg border border-gray-200 md:border-0';
+            try {
+                const { data: inv, error: invErr } = await supabaseClient.from('invoices').select('*').eq('id', id).single();
+                if (invErr) throw invErr;
                 
-                row.innerHTML = `
-                    <div class="col-span-2 md:flex-1 relative material-wrapper">
-                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Material Description *</label>
-                        <input type="text" value="${item.material_desc}" class="border border-gray-300 p-2.5 rounded w-full i-name focus:ring-2 focus:ring-blue-500 outline-none text-sm" onkeyup="showMaterialDropdown(this)" onfocus="showMaterialDropdown(this)" autocomplete="off">
-                        <div class="material-dropdown absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b shadow-xl max-h-60 overflow-y-auto hidden z-50 custom-scroll mt-1"></div>
-                    </div>
-                    
-                    <div class="col-span-1 md:w-20">
-                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Code</label>
-                        <input type="text" value="${item.material_code || ''}" class="border border-gray-300 p-2.5 rounded w-full i-mcode focus:ring-2 focus:ring-blue-500 outline-none text-sm">
-                    </div>
-                    
-                    <div class="col-span-1 md:w-20">
-                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Category</label>
-                        <input type="text" value="${item.category || ''}" class="border border-gray-300 p-2.5 rounded w-full i-cat focus:ring-2 focus:ring-blue-500 outline-none text-sm">
-                    </div>
-                    
-                    <div class="col-span-1 md:w-16">
-                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Unit</label>
-                        <select class="border border-gray-300 p-2.5 rounded w-full i-unit focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"><option value="Kg" ${item.unit=='Kg'?'selected':''}>Kg</option><option value="Ltr" ${item.unit=='Ltr'?'selected':''}>Ltr</option><option value="Num" ${item.unit=='Num'?'selected':''}>Num</option></select>
-                    </div>
-                    
-                    <div class="col-span-1 md:w-16">
-                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Qty *</label>
-                        <input type="number" value="${item.quantity}" class="border border-gray-300 p-2.5 rounded w-full i-qty focus:ring-2 focus:ring-blue-500 outline-none text-sm font-semibold" oninput="calculateRow(this)">
-                    </div>
-                    
-                    <div class="col-span-1 md:w-20">
-                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Price *</label>
-                        <input type="number" value="${item.unit_price}" class="border border-gray-300 p-2.5 rounded w-full i-price focus:ring-2 focus:ring-blue-500 outline-none text-sm" oninput="calculateRow(this)">
-                    </div>
+                const { data: items, error: itemsErr } = await supabaseClient.from('invoice_items').select('*').eq('invoice_id', id);
+                if (itemsErr) throw itemsErr;
+                
+                document.getElementById('editing_invoice_id').value = inv.id;
+                document.getElementById('invoiceFormTitle').innerHTML = `Editing Invoice: <span class="text-blue-600">${inv.invoice_number}</span>`;
+                document.getElementById('b_name').value = inv.bill_to_name; document.getElementById('b_contact').value = inv.bill_to_contact; document.getElementById('b_address').value = inv.bill_to_address;
+                document.getElementById('d_name').value = inv.deliver_to_name; document.getElementById('d_contact').value = inv.deliver_to_contact; document.getElementById('d_address').value = inv.deliver_to_address;
+                
+                document.getElementById('invoice_remark').value = inv.remark || '';
+                document.getElementById('payment_mode').value = inv.payment_mode;
+                
+                if(inv.payment_mode === 'Split') {
+                    document.getElementById('split_cash').value = inv.cash_amount || '';
+                    document.getElementById('split_credit').value = inv.credit_amount || '';
+                }
+                toggleSplitPayment();
 
-                    <div class="col-span-1 md:w-32">
-                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Item Remark</label>
-                        <input type="text" value="${item.remark || ''}" placeholder="Note" class="border border-gray-300 p-2.5 rounded w-full i-remark focus:ring-2 focus:ring-blue-500 outline-none text-sm">
-                    </div>
+                const container = document.getElementById('items-container'); container.innerHTML = '';
+                (items || []).forEach(item => {
+                    const row = document.createElement('div'); 
+                    row.className = 'item-row-grid mb-3 item-row bg-gray-50 md:bg-transparent p-4 md:p-0 rounded-lg border border-gray-200 md:border-0';
                     
-                    <div class="col-span-2 md:w-24 mt-2 md:mt-0">
-                        <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Total Amount</label>
-                        <input type="text" value="${item.total}" class="border border-gray-300 p-2.5 rounded w-full i-total bg-gray-200 font-bold text-gray-800 outline-none text-sm" readonly>
-                    </div>
-                `;
-                container.appendChild(row);
-            });
-            calculateGrandTotal(); 
-            // Scroll smoothly to top
-            document.querySelector('.overflow-y-auto').scrollTo({top: 0, behavior: 'smooth'});
+                    row.innerHTML = `
+                        <div class="col-span-2 md:flex-1 relative material-wrapper">
+                            <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Material Description *</label>
+                            <input type="text" value="${item.material_desc}" class="border border-gray-300 p-2.5 rounded w-full i-name focus:ring-2 focus:ring-blue-500 outline-none text-sm" onkeyup="showMaterialDropdown(this)" onfocus="showMaterialDropdown(this)" autocomplete="off">
+                            <div class="material-dropdown absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b shadow-xl max-h-60 overflow-y-auto hidden z-50 custom-scroll mt-1"></div>
+                        </div>
+                        
+                        <div class="col-span-1 md:w-20">
+                            <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Code</label>
+                            <input type="text" value="${item.material_code || ''}" class="border border-gray-300 p-2.5 rounded w-full i-mcode focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        
+                        <div class="col-span-1 md:w-20">
+                            <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Category</label>
+                            <input type="text" value="${item.category || ''}" class="border border-gray-300 p-2.5 rounded w-full i-cat focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        
+                        <div class="col-span-1 md:w-16">
+                            <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Unit</label>
+                            <select class="border border-gray-300 p-2.5 rounded w-full i-unit focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"><option value="Kg" ${item.unit=='Kg'?'selected':''}>Kg</option><option value="Ltr" ${item.unit=='Ltr'?'selected':''}>Ltr</option><option value="Num" ${item.unit=='Num'?'selected':''}>Num</option></select>
+                        </div>
+                        
+                        <div class="col-span-1 md:w-16">
+                            <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Qty *</label>
+                            <input type="number" value="${item.quantity}" class="border border-gray-300 p-2.5 rounded w-full i-qty focus:ring-2 focus:ring-blue-500 outline-none text-sm font-semibold" oninput="calculateRow(this)">
+                        </div>
+                        
+                        <div class="col-span-1 md:w-20">
+                            <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Price *</label>
+                            <input type="number" value="${item.unit_price}" class="border border-gray-300 p-2.5 rounded w-full i-price focus:ring-2 focus:ring-blue-500 outline-none text-sm" oninput="calculateRow(this)">
+                        </div>
+
+                        <div class="col-span-1 md:w-32">
+                            <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Item Remark</label>
+                            <input type="text" value="${item.remark || ''}" placeholder="Note" class="border border-gray-300 p-2.5 rounded w-full i-remark focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        
+                        <div class="col-span-2 md:w-24 mt-2 md:mt-0">
+                            <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Total Amount</label>
+                            <input type="text" value="${item.total}" class="border border-gray-300 p-2.5 rounded w-full i-total bg-gray-200 font-bold text-gray-800 outline-none text-sm" readonly>
+                        </div>
+                    `;
+                    container.appendChild(row);
+                });
+                calculateGrandTotal(); 
+                document.querySelector('.overflow-y-auto').scrollTo({top: 0, behavior: 'smooth'});
+                
+            } catch (error) {
+                console.error("Error loading invoice:", error);
+                alert("Failed to load invoice for editing. Check console for details.");
+            }
         }
 
         async function reprintInvoice(id) {
-            const { data: inv } = await supabaseClient.from('invoices').select('*').eq('id', id).single();
-            const { data: items } = await supabaseClient.from('invoice_items').select('*').eq('invoice_id', id);
-            let fItems = items.map(i => ({ name: i.material_desc, mcode: i.material_code, unit: i.unit, qty: i.quantity, price: i.unit_price, remark: i.remark, total: i.total }));
-            triggerPrint(inv.invoice_number, inv.payment_mode, inv.bill_to_name, inv.bill_to_contact, inv.bill_to_address, inv.deliver_to_name, inv.deliver_to_contact, inv.deliver_to_address, fItems, inv.total_amount, inv.remark, inv.cash_amount, inv.credit_amount);
+            try {
+                const { data: inv, error: invErr } = await supabaseClient.from('invoices').select('*').eq('id', id).single();
+                if (invErr) throw invErr;
+                
+                const { data: items, error: itemsErr } = await supabaseClient.from('invoice_items').select('*').eq('invoice_id', id);
+                if (itemsErr) throw itemsErr;
+                
+                let fItems = (items || []).map(i => ({ name: i.material_desc, mcode: i.material_code, unit: i.unit, qty: i.quantity, price: i.unit_price, remark: i.remark, total: i.total }));
+                triggerPrint(inv.invoice_number, inv.payment_mode, inv.bill_to_name, inv.bill_to_contact, inv.bill_to_address, inv.deliver_to_name, inv.deliver_to_contact, inv.deliver_to_address, fItems, inv.total_amount, inv.remark, inv.cash_amount, inv.credit_amount);
+            } catch (error) {
+                console.error("Error reprinting invoice:", error);
+                alert("Failed to reprint invoice. Check console for details.");
+            }
         }
 
         function prevPage() { if (currentPage > 1) loadInvoices(currentPage - 1); }
