@@ -51,7 +51,7 @@
         @media (min-width: 768px) {
             .item-row-grid {
                 display: flex;
-                flex-wrap: wrap; /* Prevents squishing on smaller desktops */
+                flex-wrap: wrap;
                 gap: 0.5rem;
                 align-items: flex-start;
             }
@@ -141,7 +141,6 @@
                     <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">Customer Name *</label>
                     <div class="relative customer-wrapper mb-3">
                         <input type="text" id="b_name" placeholder="Search or type name..." class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm" onkeyup="showCustomerDropdown('b')" onfocus="showCustomerDropdown('b')" onchange="onCustomerNameBlur()" required autocomplete="off">
-                        <!-- Custom Dropdown Container -->
                         <div id="b_dropdown" class="customer-dropdown absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b shadow-xl max-h-60 overflow-y-auto hidden z-50 custom-scroll mt-1"></div>
                     </div>
                     
@@ -162,7 +161,6 @@
                     <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">Receiver's Name</label>
                     <div class="relative customer-wrapper mb-3">
                         <input type="text" id="d_name" placeholder="Search or type name..." class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm" onkeyup="showCustomerDropdown('d')" onfocus="showCustomerDropdown('d')" autocomplete="off">
-                        <!-- Custom Dropdown Container -->
                         <div id="d_dropdown" class="customer-dropdown absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b shadow-xl max-h-60 overflow-y-auto hidden z-50 custom-scroll mt-1"></div>
                     </div>
                     
@@ -213,7 +211,7 @@
                         </div>
                     </div>
                     
-                    <!-- Split Payment Fields (Hidden by default) -->
+                    <!-- Split Payment Fields -->
                     <div id="split_fields" class="hidden flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-blue-50 p-3 rounded border border-blue-200 w-full sm:w-auto mt-2 sm:mt-0">
                         <div class="flex items-center gap-2">
                             <span class="text-sm font-bold text-blue-800 w-12">Cash:</span>
@@ -355,7 +353,7 @@
             <strong>Remark: </strong> <span id="p_remark_text" class="italic"></span>
         </div>
 
-        <!-- Dynamic Account & Dues Summary -->
+        <!-- Account & Dues Summary -->
         <div id="p_dues_section" class="mb-4 border border-black text-sm">
             <div class="bg-gray-200 font-bold p-2 border-b border-black text-center">Account & Payment Summary</div>
             <div class="flex justify-between p-2 font-bold">
@@ -408,6 +406,7 @@
         let currentPage = 1; const limitPerPage = 10;
         let sidebarTimer; let inactivityTimer;
         let activeCustomerPastDue = 0;
+        let activeUserEmail = 'user';
 
         async function initApp() {
             if (window.innerWidth < 768) {
@@ -430,8 +429,8 @@
                 window.location.href = 'login.html';
                 return;
             }
-            const userEmail = data.session.user.email;
-            const userNameDisplay = userEmail.split('@')[0].toUpperCase();
+            activeUserEmail = data.session.user.email;
+            const userNameDisplay = activeUserEmail.split('@')[0].toUpperCase();
             document.getElementById('userNameDisplay').innerText = userNameDisplay;
             document.getElementById('userAvatar').innerText = userNameDisplay.charAt(0);
         }
@@ -546,7 +545,6 @@
             shipToData = sData || [];
         }
 
-        // Fetch unpaid past dues from invoices for the specific customer
         async function fetchCustomerPastDues(customerName, currentInvoiceId = null) {
             if (!customerName) return 0;
             try {
@@ -1035,36 +1033,85 @@
             document.getElementById('pageIndicator').innerText = `Page ${currentPage}`;
         }
 
-        /* ----- DELETE INVOICE ----- */
+        /* ----- SECURE BACKUP & DELETE LOGIC ----- */
         async function deleteInvoice(id, invNumber) {
-            const confirmed = confirm(`Are you sure you want to permanently delete invoice ${invNumber}? This will also delete all associated items and cannot be undone.`);
-            if (!confirmed) return;
+            const reason = prompt(`Are you sure you want to permanently delete invoice "${invNumber}"?\n\nEnter deletion reason (required for audit log):`);
+            if (reason === null) return; // User canceled prompt
+            
+            const cleanReason = reason.trim() || 'No reason provided by user';
 
             try {
-                // Delete child items first to prevent FK constraint errors
-                const { error: itemsErr } = await supabaseClient.from('invoice_items').delete().eq('invoice_id', id);
-                if (itemsErr) throw itemsErr;
+                // 1. Fetch the complete invoice details
+                const { data: inv, error: invErr } = await supabaseClient.from('invoices').select('*').eq('id', id).single();
+                if (invErr) throw new Error("Could not find invoice for archiving: " + invErr.message);
 
-                // Delete the parent invoice
-                const { error: invErr } = await supabaseClient.from('invoices').delete().eq('id', id);
-                if (invErr) throw invErr;
+                // 2. Fetch all line items for this invoice
+                const { data: items, error: itemsErr } = await supabaseClient.from('invoice_items').select('*').eq('invoice_id', id);
+                if (itemsErr) throw new Error("Could not fetch items for archiving: " + itemsErr.message);
 
-                // If currently editing this invoice, reset the form
+                // 3. Save full backup to deleted_invoices table
+                const { error: archiveErr } = await supabaseClient.from('deleted_invoices').insert([{
+                    original_invoice_id: inv.id,
+                    invoice_number: inv.invoice_number,
+                    bill_to_name: inv.bill_to_name,
+                    bill_to_contact: inv.bill_to_contact,
+                    bill_to_address: inv.bill_to_address,
+                    deliver_to_name: inv.deliver_to_name,
+                    deliver_to_contact: inv.deliver_to_contact,
+                    deliver_to_address: inv.deliver_to_address,
+                    payment_mode: inv.payment_mode,
+                    total_amount: inv.total_amount,
+                    cash_amount: inv.cash_amount,
+                    credit_amount: inv.credit_amount,
+                    received_amount: inv.received_amount,
+                    remark: inv.remark,
+                    invoice_created_at: inv.created_at,
+                    deleted_by: activeUserEmail,
+                    items_snapshot: items || []
+                }]);
+                if (archiveErr) throw new Error("Failed to save to deleted_invoices backup: " + archiveErr.message);
+
+                // 4. Save audit log record
+                const { error: logErr } = await supabaseClient.from('audit_logs').insert([{
+                    action_type: 'DELETE_INVOICE',
+                    record_id: id,
+                    invoice_number: invNumber,
+                    performed_by: activeUserEmail,
+                    details: {
+                        reason: cleanReason,
+                        customer: inv.bill_to_name,
+                        total_amount: inv.total_amount,
+                        items_count: (items || []).length,
+                        deleted_at: new Date().toISOString()
+                    }
+                }]);
+                if (logErr) throw new Error("Failed to write to audit_logs: " + logErr.message);
+
+                // 5. Now delete line items from active database
+                const { error: deleteItemsErr } = await supabaseClient.from('invoice_items').delete().eq('invoice_id', id);
+                if (deleteItemsErr) throw deleteItemsErr;
+
+                // 6. Delete invoice record
+                const { error: deleteInvErr } = await supabaseClient.from('invoices').delete().eq('id', id);
+                if (deleteInvErr) throw deleteInvErr;
+
+                // 7. Reset form if deleted invoice is being edited
                 if (document.getElementById('editing_invoice_id').value === id) {
                     clearForm();
                 }
 
-                // Update active customer due badges if customer name is filled
+                // 8. Refresh customer dues badge if that customer was loaded
                 const bName = document.getElementById('b_name').value.trim();
                 if (bName) {
                     await updateCustomerDuesUI(bName);
                 }
 
-                alert(`Invoice ${invNumber} deleted successfully.`);
+                alert(`Invoice ${invNumber} was deleted and successfully archived to Supabase.`);
                 loadInvoices(currentPage);
+
             } catch (err) {
-                console.error("Delete invoice error:", err);
-                alert("Failed to delete invoice: " + (err.message || JSON.stringify(err)));
+                console.error("Backup & Delete error:", err);
+                alert("Operation Failed: " + (err.message || JSON.stringify(err)));
             }
         }
 
