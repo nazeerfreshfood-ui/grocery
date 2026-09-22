@@ -177,7 +177,7 @@
                 <h3 class="font-bold text-gray-800 border-b pb-2 mb-4 uppercase text-sm tracking-wider">Items Included In Invoice</h3>
                 
                 <div id="items-container">
-                    <!-- Dynamic Rows Inserted Here -->
+                    <!-- Dynamic Rows -->
                 </div>
                 
                 <button onclick="addItemRow()" class="text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2.5 rounded-md font-bold mt-3 w-full md:w-auto transition-colors border border-blue-200 shadow-sm text-sm">+ Add Another Material</button>
@@ -1033,25 +1033,25 @@
             document.getElementById('pageIndicator').innerText = `Page ${currentPage}`;
         }
 
-        /* ----- SECURE BACKUP & DELETE LOGIC ----- */
+        /* ----- SECURE BACKUP & DELETE LOGIC (TYPE-SAFE) ----- */
         async function deleteInvoice(id, invNumber) {
             const reason = prompt(`Are you sure you want to permanently delete invoice "${invNumber}"?\n\nEnter deletion reason (required for audit log):`);
-            if (reason === null) return; // User canceled prompt
+            if (reason === null) return;
             
             const cleanReason = reason.trim() || 'No reason provided by user';
 
             try {
-                // 1. Fetch the complete invoice details
+                // 1. Fetch full invoice details
                 const { data: inv, error: invErr } = await supabaseClient.from('invoices').select('*').eq('id', id).single();
                 if (invErr) throw new Error("Could not find invoice for archiving: " + invErr.message);
 
-                // 2. Fetch all line items for this invoice
+                // 2. Fetch all child items
                 const { data: items, error: itemsErr } = await supabaseClient.from('invoice_items').select('*').eq('invoice_id', id);
                 if (itemsErr) throw new Error("Could not fetch items for archiving: " + itemsErr.message);
 
-                // 3. Save full backup to deleted_invoices table
+                // 3. Save backup to deleted_invoices (ID converted explicitly to string)
                 const { error: archiveErr } = await supabaseClient.from('deleted_invoices').insert([{
-                    original_invoice_id: inv.id,
+                    original_invoice_id: String(inv.id),
                     invoice_number: inv.invoice_number,
                     bill_to_name: inv.bill_to_name,
                     bill_to_contact: inv.bill_to_contact,
@@ -1074,7 +1074,7 @@
                 // 4. Save audit log record
                 const { error: logErr } = await supabaseClient.from('audit_logs').insert([{
                     action_type: 'DELETE_INVOICE',
-                    record_id: id,
+                    record_id: String(id),
                     invoice_number: invNumber,
                     performed_by: activeUserEmail,
                     details: {
@@ -1087,26 +1087,26 @@
                 }]);
                 if (logErr) throw new Error("Failed to write to audit_logs: " + logErr.message);
 
-                // 5. Now delete line items from active database
+                // 5. Delete line items
                 const { error: deleteItemsErr } = await supabaseClient.from('invoice_items').delete().eq('invoice_id', id);
                 if (deleteItemsErr) throw deleteItemsErr;
 
-                // 6. Delete invoice record
+                // 6. Delete invoice
                 const { error: deleteInvErr } = await supabaseClient.from('invoices').delete().eq('id', id);
                 if (deleteInvErr) throw deleteInvErr;
 
-                // 7. Reset form if deleted invoice is being edited
-                if (document.getElementById('editing_invoice_id').value === id) {
+                // 7. Reset form if currently open
+                if (document.getElementById('editing_invoice_id').value === String(id)) {
                     clearForm();
                 }
 
-                // 8. Refresh customer dues badge if that customer was loaded
+                // 8. Refresh customer dues if applicable
                 const bName = document.getElementById('b_name').value.trim();
                 if (bName) {
                     await updateCustomerDuesUI(bName);
                 }
 
-                alert(`Invoice ${invNumber} was deleted and successfully archived to Supabase.`);
+                alert(`Invoice ${invNumber} was deleted and successfully archived.`);
                 loadInvoices(currentPage);
 
             } catch (err) {
