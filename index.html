@@ -240,7 +240,7 @@
                 <h3 class="font-bold text-gray-800 border-b pb-2 mb-4 text-sm uppercase tracking-wider">Invoices History</h3>
                 
                 <div class="overflow-x-auto rounded-lg border border-gray-200">
-                    <table class="w-full border-collapse text-sm min-w-[600px]">
+                    <table class="w-full border-collapse text-sm min-w-[640px]">
                         <thead class="bg-gray-50 border-b border-gray-200 text-gray-500 text-xs uppercase">
                             <tr>
                                 <th class="p-3 text-left font-semibold">Invoice</th>
@@ -249,7 +249,7 @@
                                 <th class="p-3 text-left font-semibold">Mode</th>
                                 <th class="p-3 text-right font-semibold">Total (₹)</th>
                                 <th class="p-3 text-right font-semibold">Received (₹)</th>
-                                <th class="p-3 text-center font-semibold w-24">Actions</th>
+                                <th class="p-3 text-center font-semibold w-28">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="savedInvoicesList" class="divide-y divide-gray-200 bg-white"></tbody>
@@ -696,7 +696,6 @@
             document.querySelectorAll('.i-total').forEach(input => grand += parseFloat(input.value) || 0);
             document.getElementById('grand_total').innerText = grand.toFixed(2);
             
-            // Auto-fill received amount if empty and payment mode is Cash
             const recInput = document.getElementById('received_amount');
             const mode = document.getElementById('payment_mode').value;
             if (mode === 'Cash' && (!recInput.value || parseFloat(recInput.value) === 0)) {
@@ -756,7 +755,6 @@
             const pendingCredit = grandTotal - cashVal;
             document.getElementById('split_credit').value = pendingCredit >= 0 ? pendingCredit.toFixed(2) : '0.00';
             
-            // Mirror cash amount into received amount
             document.getElementById('received_amount').value = cashVal.toFixed(2);
             calculateBalanceSummary();
         }
@@ -928,7 +926,6 @@
                     invoiceId = data[0].id;
                 }
 
-                // Insert Items & Update Catalog
                 for(let item of items) {
                     const { error: itemErr } = await supabaseClient.from('invoice_items').insert([{ 
                         invoice_id: invoiceId, 
@@ -965,7 +962,6 @@
             document.getElementById('p_b_name').innerText = bName; document.getElementById('p_b_contact').innerText = bContact; document.getElementById('p_b_address').innerText = bAddress;
             document.getElementById('p_d_name').innerText = dName; document.getElementById('p_d_contact').innerText = dContact; document.getElementById('p_d_address').innerText = dAddress;
             
-            // Remark Banner
             const pRemarkContainer = document.getElementById('p_remark_container');
             if (remark) {
                 document.getElementById('p_remark_text').innerText = remark;
@@ -974,7 +970,6 @@
                 pRemarkContainer.classList.add('hidden');
             }
 
-            // Split Banner
             const pSplitBanner = document.getElementById('p_split_banner');
             if (pMode === 'Split') {
                 document.getElementById('p_split_cash_amt').innerText = (receivedAmt || 0).toFixed(2);
@@ -1000,7 +995,6 @@
                 </tr>`;
             });
 
-            // Account & Dues Summary
             const duesSection = document.getElementById('p_dues_section');
             const totalRemainingBalance = Math.max(0, (pastDues + total) - receivedAmt);
 
@@ -1029,8 +1023,9 @@
                     </td>
                     <td class="p-3 text-right font-bold text-gray-800">₹${(inv.total_amount || 0).toFixed(2)}</td>
                     <td class="p-3 text-right font-bold text-green-700">₹${(inv.received_amount !== null && inv.received_amount !== undefined ? inv.received_amount : (inv.cash_amount || 0)).toFixed(2)}</td>
-                    <td class="p-3 text-center">
+                    <td class="p-3 text-center whitespace-nowrap">
                         <button onclick="editInvoice('${inv.id}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 p-1.5 rounded mr-1 transition-colors" title="Edit">✏️</button>
+                        <button onclick="deleteInvoice('${inv.id}', '${inv.invoice_number}')" class="text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 p-1.5 rounded mr-1 transition-colors" title="Delete">🗑️</button>
                         <button onclick="reprintInvoice('${inv.id}')" class="text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 p-1.5 rounded transition-colors" title="Reprint">🖨️</button>
                     </td>
                 </tr>`).join('');
@@ -1038,6 +1033,39 @@
             document.getElementById('btnPrev').disabled = (currentPage === 1);
             document.getElementById('btnNext').disabled = (offset + limitPerPage >= count);
             document.getElementById('pageIndicator').innerText = `Page ${currentPage}`;
+        }
+
+        /* ----- DELETE INVOICE ----- */
+        async function deleteInvoice(id, invNumber) {
+            const confirmed = confirm(`Are you sure you want to permanently delete invoice ${invNumber}? This will also delete all associated items and cannot be undone.`);
+            if (!confirmed) return;
+
+            try {
+                // Delete child items first to prevent FK constraint errors
+                const { error: itemsErr } = await supabaseClient.from('invoice_items').delete().eq('invoice_id', id);
+                if (itemsErr) throw itemsErr;
+
+                // Delete the parent invoice
+                const { error: invErr } = await supabaseClient.from('invoices').delete().eq('id', id);
+                if (invErr) throw invErr;
+
+                // If currently editing this invoice, reset the form
+                if (document.getElementById('editing_invoice_id').value === id) {
+                    clearForm();
+                }
+
+                // Update active customer due badges if customer name is filled
+                const bName = document.getElementById('b_name').value.trim();
+                if (bName) {
+                    await updateCustomerDuesUI(bName);
+                }
+
+                alert(`Invoice ${invNumber} deleted successfully.`);
+                loadInvoices(currentPage);
+            } catch (err) {
+                console.error("Delete invoice error:", err);
+                alert("Failed to delete invoice: " + (err.message || JSON.stringify(err)));
+            }
         }
 
         async function editInvoice(id) {
