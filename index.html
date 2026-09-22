@@ -131,11 +131,16 @@
                 
                 <!-- Bill To Section -->
                 <div class="flex-1 relative">
-                    <h3 class="font-bold text-gray-800 border-b pb-2 mb-4">Customer Details (Bill To)</h3>
+                    <div class="flex justify-between items-center border-b pb-2 mb-4">
+                        <h3 class="font-bold text-gray-800">Customer Details (Bill To)</h3>
+                        <span id="customer_due_badge" class="hidden text-xs font-bold bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full border border-amber-300">
+                            Past Due: ₹<span id="cust_past_due_display">0.00</span>
+                        </span>
+                    </div>
                     
                     <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">Customer Name *</label>
                     <div class="relative customer-wrapper mb-3">
-                        <input type="text" id="b_name" placeholder="Search or type name..." class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm" onkeyup="showCustomerDropdown('b')" onfocus="showCustomerDropdown('b')" required autocomplete="off">
+                        <input type="text" id="b_name" placeholder="Search or type name..." class="w-full border border-gray-300 p-2.5 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm" onkeyup="showCustomerDropdown('b')" onfocus="showCustomerDropdown('b')" onchange="onCustomerNameBlur()" required autocomplete="off">
                         <!-- Custom Dropdown Container -->
                         <div id="b_dropdown" class="customer-dropdown absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b shadow-xl max-h-60 overflow-y-auto hidden z-50 custom-scroll mt-1"></div>
                     </div>
@@ -186,17 +191,26 @@
                 </div>
             </div>
 
-            <!-- Payment & Actions -->
+            <!-- Payment, Received Amount & Actions -->
             <div class="bg-white p-5 md:p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-stretch md:items-center mb-10 gap-6">
                 
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center flex-wrap gap-4 w-full md:w-auto">
                     <div class="w-full sm:w-auto">
-                        <label class="font-bold text-gray-700 mb-1 block sm:inline sm:mr-2 text-sm">Payment Mode (Applies to Bill To):</label>
+                        <label class="font-bold text-gray-700 mb-1 block sm:inline sm:mr-2 text-sm">Payment Mode:</label>
                         <select id="payment_mode" class="border border-gray-300 p-2.5 rounded bg-gray-50 w-full sm:w-auto outline-none focus:ring-2 focus:ring-blue-500 text-sm font-semibold" onchange="toggleSplitPayment()">
                             <option value="Cash">Cash (To Cashbook)</option>
                             <option value="Credit">Credit (To Customer Ledger)</option>
                             <option value="Split">Split (Cash + Credit)</option>
                         </select>
+                    </div>
+                    
+                    <!-- Received Amount Input Field -->
+                    <div class="w-full sm:w-auto bg-green-50 p-2.5 rounded border border-green-200 flex items-center gap-2">
+                        <label class="font-bold text-green-900 text-sm whitespace-nowrap">Received Amount:</label>
+                        <div class="relative">
+                            <span class="absolute left-2.5 top-2 text-gray-500 text-sm font-bold">₹</span>
+                            <input type="number" id="received_amount" placeholder="0.00" class="border border-green-300 pl-6 pr-2 py-1.5 rounded w-32 text-sm font-bold text-green-800 outline-none focus:ring-2 focus:ring-green-500" oninput="calculateBalanceSummary()">
+                        </div>
                     </div>
                     
                     <!-- Split Payment Fields (Hidden by default) -->
@@ -212,8 +226,11 @@
                     </div>
                 </div>
 
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0">
-                    <div class="text-xl md:text-2xl font-bold text-gray-800 text-center sm:text-right">Total: ₹<span id="grand_total" class="text-green-600">0.00</span></div>
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-6 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0">
+                    <div class="text-right flex flex-col justify-center">
+                        <div class="text-xl md:text-2xl font-bold text-gray-800">Bill Total: ₹<span id="grand_total" class="text-green-600">0.00</span></div>
+                        <div id="live_remaining_badge" class="text-xs font-semibold text-gray-500 mt-1">Remaining Due: ₹<span id="live_remaining_val">0.00</span></div>
+                    </div>
                     <button onclick="saveAndPrint()" class="bg-gray-900 text-white px-8 py-3 md:py-4 rounded-lg shadow-md hover:bg-gray-800 font-bold text-lg transition-colors w-full sm:w-auto tracking-wide">+ Create Invoice</button>
                 </div>
             </div>
@@ -222,7 +239,6 @@
             <div class="bg-white p-5 md:p-6 rounded-lg shadow-sm border border-gray-200 mb-10">
                 <h3 class="font-bold text-gray-800 border-b pb-2 mb-4 text-sm uppercase tracking-wider">Invoices History</h3>
                 
-                <!-- Wrapping table in overflow-x-auto for mobile scrolling -->
                 <div class="overflow-x-auto rounded-lg border border-gray-200">
                     <table class="w-full border-collapse text-sm min-w-[600px]">
                         <thead class="bg-gray-50 border-b border-gray-200 text-gray-500 text-xs uppercase">
@@ -232,6 +248,7 @@
                                 <th class="p-3 text-left font-semibold">Customer</th>
                                 <th class="p-3 text-left font-semibold">Mode</th>
                                 <th class="p-3 text-right font-semibold">Total (₹)</th>
+                                <th class="p-3 text-right font-semibold">Received (₹)</th>
                                 <th class="p-3 text-center font-semibold w-24">Actions</th>
                             </tr>
                         </thead>
@@ -338,9 +355,9 @@
             <strong>Remark: </strong> <span id="p_remark_text" class="italic"></span>
         </div>
 
-        <!-- Conditional Dues Summary -->
-        <div id="p_dues_section" class="hidden mb-4 border border-black text-sm">
-            <div class="bg-gray-200 font-bold p-2 border-b border-black text-center">Account Summary</div>
+        <!-- Dynamic Account & Dues Summary -->
+        <div id="p_dues_section" class="mb-4 border border-black text-sm">
+            <div class="bg-gray-200 font-bold p-2 border-b border-black text-center">Account & Payment Summary</div>
             <div class="flex justify-between p-2 font-bold">
                 <div class="w-1/4 text-center border-r border-black">
                     <div class="text-xs text-gray-600 font-normal">Previous Balance</div>
@@ -351,11 +368,11 @@
                     <div>₹<span id="p_curr_bill">0.00</span></div>
                 </div>
                 <div class="w-1/4 text-center border-r border-black">
-                    <div class="text-xs text-gray-600 font-normal">Paid Amount</div>
+                    <div class="text-xs text-gray-600 font-normal">Received Amount</div>
                     <div>₹<span id="p_paid_amt">0.00</span></div>
                 </div>
                 <div class="w-1/4 text-center">
-                    <div class="text-xs text-gray-600 font-normal">Total Balance</div>
+                    <div class="text-xs text-gray-600 font-normal">Remaining Balance</div>
                     <div>₹<span id="p_total_bal">0.00</span></div>
                 </div>
             </div>
@@ -390,9 +407,9 @@
         let globalCatalog = []; let billToData = []; let shipToData = [];
         let currentPage = 1; const limitPerPage = 10;
         let sidebarTimer; let inactivityTimer;
+        let activeCustomerPastDue = 0;
 
         async function initApp() {
-            // Auto-collapse sidebar on mobile load
             if (window.innerWidth < 768) {
                 document.getElementById('sidebar').classList.add('collapsed');
             }
@@ -402,7 +419,6 @@
             setupClickOutsideListener();
             await fetchAllBaseData();
             
-            // Add initial empty row
             addItemRow();
             loadInvoices(1);
         }
@@ -450,7 +466,6 @@
                 const { data: sessionData } = await supabaseClient.auth.getSession();
                 const email = sessionData?.session?.user?.email;
                 
-                // Re-authenticate to verify old password securely
                 const { error: signInErr } = await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: oldP
@@ -458,7 +473,6 @@
                 
                 if (signInErr) throw new Error("Incorrect old password.");
                 
-                // Proceed with updating the password
                 const { error: updateErr } = await supabaseClient.auth.updateUser({
                     password: newP
                 });
@@ -486,7 +500,7 @@
 
         function resetAllTimers() {
             clearTimeout(inactivityTimer);
-            inactivityTimer = setTimeout(logOut, 30 * 60 * 1000); // 30 min full logout
+            inactivityTimer = setTimeout(logOut, 30 * 60 * 1000);
             resetSidebarTimer();
         }
 
@@ -534,13 +548,13 @@
 
         // Fetch unpaid past dues from invoices for the specific customer
         async function fetchCustomerPastDues(customerName, currentInvoiceId = null) {
+            if (!customerName) return 0;
             try {
                 let query = supabaseClient.from('invoices')
                     .select('credit_amount')
                     .eq('bill_to_name', customerName)
                     .gt('credit_amount', 0);
                 
-                // If editing, exclude the current invoice from the past dues sum
                 if (currentInvoiceId) {
                     query = query.neq('id', currentInvoiceId);
                 }
@@ -548,7 +562,6 @@
                 const { data, error } = await query;
                 if (error) throw error;
                 
-                // Calculate total outstanding credit (past dues)
                 let pastDues = 0;
                 if (data) {
                     pastDues = data.reduce((sum, inv) => sum + (parseFloat(inv.credit_amount) || 0), 0);
@@ -556,20 +569,38 @@
                 return pastDues;
             } catch (err) {
                 console.error("Error fetching past dues:", err);
-                return 0; // Safe fallback
+                return 0;
             }
         }
 
-        /* ----- CUSTOM DROPDOWNS (Autocomplete UI) ----- */
-        
-        // 1. Customer Dropdown Logic
+        async function updateCustomerDuesUI(customerName) {
+            const currentEditingId = document.getElementById('editing_invoice_id').value;
+            activeCustomerPastDue = await fetchCustomerPastDues(customerName, currentEditingId);
+            
+            const badge = document.getElementById('customer_due_badge');
+            const display = document.getElementById('cust_past_due_display');
+            
+            if (activeCustomerPastDue > 0) {
+                display.innerText = activeCustomerPastDue.toFixed(2);
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+            calculateBalanceSummary();
+        }
+
+        window.onCustomerNameBlur = function() {
+            const val = document.getElementById('b_name').value.trim();
+            if (val) updateCustomerDuesUI(val);
+        }
+
+        /* ----- CUSTOM DROPDOWNS ----- */
         window.showCustomerDropdown = function(type) {
             const input = document.getElementById(`${type}_name`);
             const dropdown = document.getElementById(`${type}_dropdown`);
             const val = input.value.toLowerCase().trim();
             const dataList = type === 'b' ? billToData : shipToData;
             
-            // Filter by name or contact number
             const filtered = dataList.filter(c => 
                 c.name.toLowerCase().includes(val) || 
                 (c.contact && c.contact.toLowerCase().includes(val))
@@ -602,9 +633,12 @@
             document.getElementById(`${type}_contact`).value = contact;
             document.getElementById(`${type}_address`).value = address;
             document.getElementById(`${type}_dropdown`).classList.add('hidden');
+
+            if (type === 'b') {
+                updateCustomerDuesUI(name);
+            }
         }
 
-        // 2. Material Dropdown Logic
         window.showMaterialDropdown = function(input) {
             const val = input.value.toLowerCase().trim();
             const wrapper = input.closest('.material-wrapper');
@@ -645,12 +679,10 @@
             row.querySelector('.i-unit').value = unit;
             
             element.closest('.material-dropdown').classList.add('hidden');
-            
-            // Move focus to Qty field
             row.querySelector('.i-qty').focus();
         }
 
-        /* ----- CALCULATIONS & SPLIT LOGIC ----- */
+        /* ----- CALCULATIONS & BALANCE LOGIC ----- */
         function calculateRow(element) {
             const row = element.closest('.item-row');
             const qty = parseFloat(row.querySelector('.i-qty').value) || 0;
@@ -663,12 +695,41 @@
             let grand = 0;
             document.querySelectorAll('.i-total').forEach(input => grand += parseFloat(input.value) || 0);
             document.getElementById('grand_total').innerText = grand.toFixed(2);
-            calculateSplitAmount(); 
+            
+            // Auto-fill received amount if empty and payment mode is Cash
+            const recInput = document.getElementById('received_amount');
+            const mode = document.getElementById('payment_mode').value;
+            if (mode === 'Cash' && (!recInput.value || parseFloat(recInput.value) === 0)) {
+                recInput.value = grand.toFixed(2);
+            }
+
+            calculateSplitAmount();
+            calculateBalanceSummary();
+        }
+
+        function calculateBalanceSummary() {
+            const grandTotal = parseFloat(document.getElementById('grand_total').innerText) || 0;
+            const received = parseFloat(document.getElementById('received_amount').value) || 0;
+            const totalPayable = activeCustomerPastDue + grandTotal;
+            const remaining = totalPayable - received;
+
+            const remainingDisplay = document.getElementById('live_remaining_val');
+            if (remainingDisplay) {
+                remainingDisplay.innerText = remaining.toFixed(2);
+                if (remaining > 0) {
+                    remainingDisplay.className = "text-red-600 font-bold";
+                } else {
+                    remainingDisplay.className = "text-green-600 font-bold";
+                }
+            }
         }
 
         function toggleSplitPayment() {
             const mode = document.getElementById('payment_mode').value;
             const splitFields = document.getElementById('split_fields');
+            const grandTotal = parseFloat(document.getElementById('grand_total').innerText) || 0;
+            const recInput = document.getElementById('received_amount');
+
             if (mode === 'Split') {
                 splitFields.classList.remove('hidden');
                 splitFields.classList.add('flex');
@@ -678,7 +739,14 @@
                 splitFields.classList.add('hidden');
                 document.getElementById('split_cash').value = '';
                 document.getElementById('split_credit').value = '';
+                
+                if (mode === 'Cash') {
+                    recInput.value = grandTotal.toFixed(2);
+                } else if (mode === 'Credit') {
+                    recInput.value = '0.00';
+                }
             }
+            calculateBalanceSummary();
         }
 
         function calculateSplitAmount() {
@@ -687,9 +755,12 @@
             const cashVal = parseFloat(document.getElementById('split_cash').value) || 0;
             const pendingCredit = grandTotal - cashVal;
             document.getElementById('split_credit').value = pendingCredit >= 0 ? pendingCredit.toFixed(2) : '0.00';
+            
+            // Mirror cash amount into received amount
+            document.getElementById('received_amount').value = cashVal.toFixed(2);
+            calculateBalanceSummary();
         }
 
-        /* Fixed item spacing width distribution */
         function addItemRow() {
             const container = document.getElementById('items-container');
             const row = document.createElement('div');
@@ -699,7 +770,6 @@
                 <div class="col-span-2 md:flex-1 relative material-wrapper">
                     <label class="text-[10px] font-bold text-gray-500 mb-1 block uppercase md:hidden">Material Description *</label>
                     <input type="text" placeholder="Search or Type Item *" class="border border-gray-300 p-2.5 rounded w-full i-name focus:ring-2 focus:ring-blue-500 outline-none text-sm" onkeyup="showMaterialDropdown(this)" onfocus="showMaterialDropdown(this)" autocomplete="off">
-                    <!-- Dropdown -->
                     <div class="material-dropdown absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b shadow-xl max-h-60 overflow-y-auto hidden z-50 custom-scroll mt-1"></div>
                 </div>
                 
@@ -748,6 +818,10 @@
             document.getElementById('d_name').value = ''; document.getElementById('d_contact').value = ''; document.getElementById('d_address').value = '';
             document.getElementById('invoice_remark').value = '';
             document.getElementById('payment_mode').value = 'Cash';
+            document.getElementById('received_amount').value = '';
+            activeCustomerPastDue = 0;
+            document.getElementById('customer_due_badge').classList.add('hidden');
+            
             toggleSplitPayment();
             
             document.getElementById('items-container').innerHTML = '';
@@ -755,7 +829,7 @@
             calculateGrandTotal();
         }
 
-        /* ----- SAVE & PRINT (WITH SMART NUMBERING & FK FIX) ----- */
+        /* ----- SAVE & PRINT ----- */
         async function saveAndPrint() {
             const bName = document.getElementById('b_name').value.trim();
             if(!bName) return alert("Please enter Customer Name");
@@ -793,29 +867,31 @@
                 const dContact = document.getElementById('d_contact').value || document.getElementById('b_contact').value;
                 const dAddress = document.getElementById('d_address').value || document.getElementById('b_address').value;
                 const remark = document.getElementById('invoice_remark').value.trim();
+                const receivedAmount = parseFloat(document.getElementById('received_amount').value) || 0;
                 
                 let c_amount = 0, cr_amount = 0;
                 if(pMode === 'Split') {
                     c_amount = parseFloat(document.getElementById('split_cash').value) || 0;
                     cr_amount = parseFloat(document.getElementById('split_credit').value) || 0;
                 } else if (pMode === 'Credit') {
-                    cr_amount = totalAmount; 
+                    cr_amount = Math.max(0, totalAmount - receivedAmount);
+                    c_amount = receivedAmount;
                 } else {
-                    c_amount = totalAmount; 
+                    c_amount = totalAmount;
+                    cr_amount = 0;
                 }
 
-                // CRITICAL FIX: ALWAYS save to both tables to prevent Foreign Key crashes
                 await supabaseClient.from('bill_to_customers').upsert({ name: bName, contact: document.getElementById('b_contact').value, address: document.getElementById('b_address').value }, { onConflict: 'name' });
                 await supabaseClient.from('ship_to_customers').upsert({ name: dName, contact: dContact, address: dAddress }, { onConflict: 'name' });
 
-                // Fetch past dues BEFORE saving the current invoice to determine previous balance accurately
                 const pastDues = await fetchCustomerPastDues(bName, invoiceId);
 
                 let payload = { 
                     bill_to_name: bName, bill_to_contact: document.getElementById('b_contact').value, bill_to_address: document.getElementById('b_address').value, 
                     deliver_to_name: dName, deliver_to_contact: dContact, deliver_to_address: dAddress, 
                     payment_mode: pMode, total_amount: totalAmount,
-                    remark: remark, cash_amount: c_amount, credit_amount: cr_amount
+                    remark: remark, cash_amount: c_amount, credit_amount: cr_amount,
+                    received_amount: receivedAmount
                 };
                 
                 let invNumber = "";
@@ -827,7 +903,6 @@
                     invNumber = data[0].invoice_number;
                     await supabaseClient.from('invoice_items').delete().eq('invoice_id', invoiceId);
                 } else {
-                    // Smart Number Generation
                     const { data: latestInv, error: fetchError } = await supabaseClient.from('invoices')
                         .select('invoice_number')
                         .like('invoice_number', 'INV-%')
@@ -853,7 +928,7 @@
                     invoiceId = data[0].id;
                 }
 
-                // Insert Items and Catalog
+                // Insert Items & Update Catalog
                 for(let item of items) {
                     const { error: itemErr } = await supabaseClient.from('invoice_items').insert([{ 
                         invoice_id: invoiceId, 
@@ -863,7 +938,7 @@
                         unit: item.unit, 
                         quantity: item.qty, 
                         unit_price: item.price, 
-                        remark: item.remark,
+                        remark: item.remark, 
                         total: item.total 
                     }]);
                     if(itemErr) throw itemErr; 
@@ -871,7 +946,7 @@
                     await supabaseClient.from('catalog').upsert({ material_desc: item.name, material_code: item.mcode, category: item.cat, unit: item.unit }, { onConflict: 'material_desc' });
                 }
 
-                triggerPrint(invNumber, pMode, bName, document.getElementById('b_contact').value, document.getElementById('b_address').value, dName, dContact, dAddress, items, totalAmount, remark, c_amount, cr_amount, pastDues);
+                triggerPrint(invNumber, pMode, bName, document.getElementById('b_contact').value, document.getElementById('b_address').value, dName, dContact, dAddress, items, totalAmount, remark, receivedAmount, cr_amount, pastDues);
                 setTimeout(() => window.location.reload(), 1500);
 
             } catch (err) {
@@ -883,15 +958,14 @@
             }
         }
 
-        // Print layout restored to original column structure to prevent broken views
-        function triggerPrint(invNum, pMode, bName, bContact, bAddress, dName, dContact, dAddress, items, total, remark = '', cashAmt = 0, creditAmt = 0, pastDues = 0) {
+        function triggerPrint(invNum, pMode, bName, bContact, bAddress, dName, dContact, dAddress, items, total, remark = '', receivedAmt = 0, creditAmt = 0, pastDues = 0) {
             document.getElementById('p_inv_no').innerText = invNum;
             document.getElementById('p_date').innerText = new Date().toLocaleDateString();
             document.getElementById('p_mode').innerText = pMode;
             document.getElementById('p_b_name').innerText = bName; document.getElementById('p_b_contact').innerText = bContact; document.getElementById('p_b_address').innerText = bAddress;
             document.getElementById('p_d_name').innerText = dName; document.getElementById('p_d_contact').innerText = dContact; document.getElementById('p_d_address').innerText = dAddress;
             
-            // Handle Remark
+            // Remark Banner
             const pRemarkContainer = document.getElementById('p_remark_container');
             if (remark) {
                 document.getElementById('p_remark_text').innerText = remark;
@@ -900,10 +974,10 @@
                 pRemarkContainer.classList.add('hidden');
             }
 
-            // Handle Split Banner
+            // Split Banner
             const pSplitBanner = document.getElementById('p_split_banner');
             if (pMode === 'Split') {
-                document.getElementById('p_split_cash_amt').innerText = (cashAmt || 0).toFixed(2);
+                document.getElementById('p_split_cash_amt').innerText = (receivedAmt || 0).toFixed(2);
                 document.getElementById('p_split_credit_amt').innerText = (creditAmt || 0).toFixed(2);
                 pSplitBanner.classList.remove('hidden');
                 pSplitBanner.classList.add('flex');
@@ -914,7 +988,6 @@
 
             const tbody = document.getElementById('p_items_body'); tbody.innerHTML = '';
             items.forEach((item, i) => {
-                // Elegantly append the remark inside the material description column so the table structure stays perfect
                 const remarkHtml = item.remark ? `<br><span class="text-[11px] italic text-gray-600 font-normal">Note: ${item.remark}</span>` : '';
                 tbody.innerHTML += `<tr>
                     <td class="p-2 border border-black text-center">${i + 1}</td>
@@ -927,17 +1000,15 @@
                 </tr>`;
             });
 
-            // Handle Conditional Dues Summary
+            // Account & Dues Summary
             const duesSection = document.getElementById('p_dues_section');
-            if (pastDues > 0 || creditAmt > 0) {
-                document.getElementById('p_prev_bal').innerText = pastDues.toFixed(2);
-                document.getElementById('p_curr_bill').innerText = total.toFixed(2);
-                document.getElementById('p_paid_amt').innerText = cashAmt.toFixed(2);
-                document.getElementById('p_total_bal').innerText = (pastDues + creditAmt).toFixed(2);
-                duesSection.classList.remove('hidden');
-            } else {
-                duesSection.classList.add('hidden');
-            }
+            const totalRemainingBalance = Math.max(0, (pastDues + total) - receivedAmt);
+
+            document.getElementById('p_prev_bal').innerText = pastDues.toFixed(2);
+            document.getElementById('p_curr_bill').innerText = total.toFixed(2);
+            document.getElementById('p_paid_amt').innerText = receivedAmt.toFixed(2);
+            document.getElementById('p_total_bal').innerText = totalRemainingBalance.toFixed(2);
+            duesSection.classList.remove('hidden');
 
             document.getElementById('p_grand_total').innerText = total.toFixed(2);
             window.print();
@@ -948,7 +1019,6 @@
             const tbody = document.getElementById('savedInvoicesList');
             const { data, count } = await supabaseClient.from('invoices').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(offset, offset + limitPerPage - 1);
             
-            // Added quotes around the ID to prevent UUID syntax errors
             tbody.innerHTML = (data||[]).map(inv => `
                 <tr class="hover:bg-blue-50 transition-colors">
                     <td class="p-3 font-bold text-gray-800">${inv.invoice_number}</td>
@@ -957,7 +1027,8 @@
                     <td class="p-3">
                         <span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-bold border border-gray-200 uppercase">${inv.payment_mode}</span>
                     </td>
-                    <td class="p-3 text-right font-bold text-gray-800">₹${inv.total_amount.toFixed(2)}</td>
+                    <td class="p-3 text-right font-bold text-gray-800">₹${(inv.total_amount || 0).toFixed(2)}</td>
+                    <td class="p-3 text-right font-bold text-green-700">₹${(inv.received_amount !== null && inv.received_amount !== undefined ? inv.received_amount : (inv.cash_amount || 0)).toFixed(2)}</td>
                     <td class="p-3 text-center">
                         <button onclick="editInvoice('${inv.id}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 p-1.5 rounded mr-1 transition-colors" title="Edit">✏️</button>
                         <button onclick="reprintInvoice('${inv.id}')" class="text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 p-1.5 rounded transition-colors" title="Reprint">🖨️</button>
@@ -984,12 +1055,15 @@
                 
                 document.getElementById('invoice_remark').value = inv.remark || '';
                 document.getElementById('payment_mode').value = inv.payment_mode;
+                document.getElementById('received_amount').value = inv.received_amount !== null && inv.received_amount !== undefined ? inv.received_amount : (inv.cash_amount || '');
                 
                 if(inv.payment_mode === 'Split') {
                     document.getElementById('split_cash').value = inv.cash_amount || '';
                     document.getElementById('split_credit').value = inv.credit_amount || '';
                 }
                 toggleSplitPayment();
+
+                await updateCustomerDuesUI(inv.bill_to_name);
 
                 const container = document.getElementById('items-container'); container.innerHTML = '';
                 (items || []).forEach(item => {
@@ -1045,7 +1119,7 @@
                 
             } catch (error) {
                 console.error("Error loading invoice:", error);
-                alert("Failed to load invoice for editing. Check console for details.");
+                alert("Failed to load invoice for editing.");
             }
         }
 
@@ -1057,14 +1131,14 @@
                 const { data: items, error: itemsErr } = await supabaseClient.from('invoice_items').select('*').eq('invoice_id', id);
                 if (itemsErr) throw itemsErr;
 
-                // Fetch past dues specifically excluding the current invoice being reprinted to show accurate context
                 const pastDues = await fetchCustomerPastDues(inv.bill_to_name, id);
+                const receivedAmt = inv.received_amount !== null && inv.received_amount !== undefined ? inv.received_amount : (inv.cash_amount || 0);
                 
                 let fItems = (items || []).map(i => ({ name: i.material_desc, mcode: i.material_code, unit: i.unit, qty: i.quantity, price: i.unit_price, remark: i.remark, total: i.total }));
-                triggerPrint(inv.invoice_number, inv.payment_mode, inv.bill_to_name, inv.bill_to_contact, inv.bill_to_address, inv.deliver_to_name, inv.deliver_to_contact, inv.deliver_to_address, fItems, inv.total_amount, inv.remark, inv.cash_amount, inv.credit_amount, pastDues);
+                triggerPrint(inv.invoice_number, inv.payment_mode, inv.bill_to_name, inv.bill_to_contact, inv.bill_to_address, inv.deliver_to_name, inv.deliver_to_contact, inv.deliver_to_address, fItems, inv.total_amount, inv.remark, receivedAmt, inv.credit_amount, pastDues);
             } catch (error) {
                 console.error("Error reprinting invoice:", error);
-                alert("Failed to reprint invoice. Check console for details.");
+                alert("Failed to reprint invoice.");
             }
         }
 
