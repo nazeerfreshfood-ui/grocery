@@ -213,12 +213,11 @@
         
         // Ledger State
         let currentLedgerCustomer = '';
-        let currentPbCustomer = ''; // For Previous Balance
+        let currentPbCustomer = ''; 
         let currentPendingInvoices = [];
         let currentTotalDue = 0;
 
         async function initApp() {
-            // Auto-collapse sidebar on mobile load
             if (window.innerWidth < 768) {
                 document.getElementById('sidebar').classList.add('collapsed');
             }
@@ -257,7 +256,7 @@
 
         function resetAllTimers() {
             clearTimeout(inactivityTimer);
-            inactivityTimer = setTimeout(logOut, 30 * 60 * 1000); // 30 min auto-logout
+            inactivityTimer = setTimeout(logOut, 30 * 60 * 1000); 
             resetSidebarTimer();
         }
 
@@ -289,16 +288,13 @@
             const tbody = document.getElementById('dataTable');
             
             try {
-                // 1. Fetch Customers
                 const { data: customers, error: custError } = await supabaseClient.from('bill_to_customers').select('*').order('name');
                 if (custError) throw custError;
 
-                // 2. Fetch ALL invoices (including fully paid ones) to calculate accurate pending OS balance globally
                 const { data: allInvoices, error: invError } = await supabaseClient.from('invoices')
                     .select('bill_to_name, credit_amount');
                 if (invError) throw invError;
 
-                // 3. Aggregate dues per customer (sum of all credit amounts)
                 let duesMap = {};
                 allInvoices.forEach(inv => {
                     const name = (inv.bill_to_name || '').trim();
@@ -311,7 +307,6 @@
                     return;
                 }
 
-                // 4. Render Table
                 tbody.innerHTML = customers.map(c => {
                     const safeName = (c.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
                     const safeContact = (c.contact || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -411,7 +406,6 @@
             document.getElementById('pbAmount').value = '';
             document.getElementById('pbNote').value = '';
             
-            // Show modal
             document.getElementById('pbModal').classList.remove('hidden');
             document.getElementById('pbModal').classList.add('flex');
             resetAllTimers(); 
@@ -433,7 +427,6 @@
                 return alert("Please enter a valid positive amount.");
             }
 
-            // Append prefix so it's clear in the ledger
             if (!note) {
                 note = 'Previous Balance Entry';
             } else {
@@ -444,7 +437,6 @@
             btn.innerText = 'Saving...';
 
             try {
-                // Smart Number Generation exclusively for PB- series
                 const { data: latestPb, error: fetchError } = await supabaseClient.from('invoices')
                     .select('invoice_number')
                     .like('invoice_number', 'PB-%')
@@ -477,7 +469,7 @@
                 if (error) throw error;
 
                 closePbModal();
-                loadData(); // Refresh the table
+                loadData(); 
 
             } catch (err) {
                 console.error(err);
@@ -495,7 +487,6 @@
             document.getElementById('ledgerCustomerName').innerText = customerName;
             document.getElementById('settleAmount').value = '';
             
-            // Show Modal
             const modal = document.getElementById('ledgerModal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
@@ -509,7 +500,7 @@
             modal.classList.remove('flex');
             currentLedgerCustomer = '';
             currentPendingInvoices = [];
-            resetAllTimers(); // Reset timer so sidebar doesn't hide while interacting
+            resetAllTimers(); 
         }
 
         async function loadLedgerInvoices() {
@@ -517,9 +508,9 @@
             tbody.innerHTML = '<tr><td colspan="6" class="text-center p-6 text-gray-500">Fetching all ledger entries...</td></tr>';
             
             try {
-                // Fetch ALL invoices for this customer (paid and unpaid) to record complete history and OS
+                // EXPLICITLY FETCHING received_amount FROM THE DATABASE
                 const { data, error } = await supabaseClient.from('invoices')
-                    .select('id, invoice_number, created_at, total_amount, cash_amount, credit_amount, remark')
+                    .select('id, invoice_number, created_at, total_amount, cash_amount, credit_amount, received_amount, remark')
                     .eq('bill_to_name', currentLedgerCustomer)
                     .order('created_at', { ascending: true });
                 
@@ -539,7 +530,12 @@
                 tbody.innerHTML = currentPendingInvoices.map(inv => {
                     const creditAmt = parseFloat(inv.credit_amount || 0);
                     const totalAmt = parseFloat(inv.total_amount || 0);
-                    const paidAmt = totalAmt - creditAmt; // amount that has been paid towards this invoice
+                    
+                    // THIS IS THE FIX: Render the exact amount you typed into the box during billing
+                    let paidAmt = parseFloat(inv.received_amount);
+                    if (isNaN(paidAmt)) {
+                        paidAmt = parseFloat(inv.cash_amount || 0);
+                    }
                     
                     currentTotalDue += creditAmt;
 
@@ -549,11 +545,10 @@
                     const isFullyPaid = creditAmt <= 0;
                     let rowClass = "hover:bg-gray-50";
 
-                    // Color coordinate rows
                     if (isPrevBalance) {
                         rowClass += " bg-orange-50/30";
                     } else if (isFullyPaid) {
-                        rowClass += " bg-green-50/30"; // visually distinct for paid entries
+                        rowClass += " bg-green-50/30"; 
                     }
                     
                     return `
@@ -570,7 +565,6 @@
 
                 document.getElementById('ledgerTotalDue').innerText = currentTotalDue.toFixed(2);
                 
-                // Disable settlement if nothing is owed
                 if (currentTotalDue <= 0) {
                     document.getElementById('settleBtn').disabled = true;
                     document.getElementById('settleBtn').classList.add('opacity-50');
@@ -603,10 +597,8 @@
             const originalSettleAmount = settleAmount;
 
             try {
-                // Filter to only those invoices that actually have a pending amount
                 let unpaidInvoices = currentPendingInvoices.filter(inv => parseFloat(inv.credit_amount) > 0);
 
-                // 1. Loop through oldest unpaid invoices and reduce credit_amount
                 for (let inv of unpaidInvoices) {
                     if (settleAmount <= 0) break;
                     
@@ -616,7 +608,6 @@
                     
                     settleAmount -= deduction;
                     
-                    // Update invoice in Supabase
                     const { error: updateError } = await supabaseClient.from('invoices')
                         .update({ credit_amount: newCredit })
                         .eq('id', inv.id);
@@ -624,11 +615,10 @@
                     if (updateError) throw updateError;
                 }
 
-                // 2. Log entry into Cashbook
                 try {
                     await supabaseClient.from('cashbook_entries').insert([{
                         created_by: currentUserEmail,
-                        type: 'in', // Money coming in
+                        type: 'in', 
                         amount: originalSettleAmount,
                         description: `Ledger Settlement for customer: ${currentLedgerCustomer}`
                     }]);
@@ -636,13 +626,11 @@
                     console.warn("Cashbook log skipped or failed:", cbError);
                 }
 
-                // Success
                 alert(`Successfully settled ₹${originalSettleAmount.toFixed(2)} for ${currentLedgerCustomer}.`);
                 document.getElementById('settleAmount').value = '';
                 
-                // Refresh data
                 await loadLedgerInvoices(); 
-                loadData(); // refresh background table
+                loadData(); 
 
             } catch (err) {
                 console.error(err);
