@@ -156,7 +156,7 @@
             <div class="p-5 border-b flex justify-between items-center bg-gray-50">
                 <div>
                     <h2 class="text-xl font-extrabold text-gray-800">Ledger: <span id="ledgerCustomerName" class="text-blue-700"></span></h2>
-                    <p class="text-sm text-gray-500 mt-1">Manage pending invoices and settle dues</p>
+                    <p class="text-sm text-gray-500 mt-1">Manage all invoices, payments, and settle dues</p>
                 </div>
                 <button onclick="closeLedger()" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50">
                     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -166,13 +166,14 @@
             <!-- Modal Body (Invoices List) -->
             <div class="p-5 flex-1 overflow-y-auto bg-white custom-scroll">
                 <div class="overflow-x-auto rounded-lg border border-gray-200 custom-scroll">
-                    <table class="w-full text-sm text-left min-w-[500px]">
+                    <table class="w-full text-sm text-left min-w-[600px]">
                         <thead class="bg-gray-100 text-gray-700">
                             <tr>
                                 <th class="p-3 font-semibold">Invoice No.</th>
                                 <th class="p-3 font-semibold">Date</th>
                                 <th class="p-3 font-semibold">Description / Note</th>
                                 <th class="p-3 font-semibold text-right">Total Bill</th>
+                                <th class="p-3 font-semibold text-right text-green-600">Paid Amount</th>
                                 <th class="p-3 font-semibold text-right text-red-600">Pending Amount</th>
                             </tr>
                         </thead>
@@ -186,7 +187,7 @@
             <!-- Modal Footer (Settlement Area) -->
             <div class="p-5 border-t bg-gray-50 flex flex-col md:flex-row gap-4 items-center justify-between">
                 <div class="text-lg">
-                    <span class="text-gray-600 font-medium">Total Pending: </span>
+                    <span class="text-gray-600 font-medium">Total Pending OS: </span>
                     <span class="font-bold text-red-600 text-2xl">₹<span id="ledgerTotalDue">0.00</span></span>
                 </div>
                 
@@ -292,15 +293,14 @@
                 const { data: customers, error: custError } = await supabaseClient.from('bill_to_customers').select('*').order('name');
                 if (custError) throw custError;
 
-                // 2. Fetch all unpaid invoices to calculate pending dues globally
-                const { data: unpaidInvoices, error: invError } = await supabaseClient.from('invoices')
-                    .select('bill_to_name, credit_amount')
-                    .gt('credit_amount', 0);
+                // 2. Fetch ALL invoices (including fully paid ones) to calculate accurate pending OS balance globally
+                const { data: allInvoices, error: invError } = await supabaseClient.from('invoices')
+                    .select('bill_to_name, credit_amount');
                 if (invError) throw invError;
 
-                // 3. Aggregate dues per customer
+                // 3. Aggregate dues per customer (sum of all credit amounts)
                 let duesMap = {};
-                unpaidInvoices.forEach(inv => {
+                allInvoices.forEach(inv => {
                     const name = (inv.bill_to_name || '').trim();
                     if (!duesMap[name]) duesMap[name] = 0;
                     duesMap[name] += parseFloat(inv.credit_amount || 0);
@@ -514,14 +514,13 @@
 
         async function loadLedgerInvoices() {
             const tbody = document.getElementById('ledgerInvoicesTable');
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-gray-500">Fetching pending invoices...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center p-6 text-gray-500">Fetching all ledger entries...</td></tr>';
             
             try {
-                // Fetch invoices where this customer owes money, sorted oldest to newest
+                // Fetch ALL invoices for this customer (paid and unpaid) to record complete history and OS
                 const { data, error } = await supabaseClient.from('invoices')
-                    .select('id, invoice_number, created_at, total_amount, credit_amount, remark')
+                    .select('id, invoice_number, created_at, total_amount, cash_amount, credit_amount, remark')
                     .eq('bill_to_name', currentLedgerCustomer)
-                    .gt('credit_amount', 0)
                     .order('created_at', { ascending: true });
                 
                 if (error) throw error;
@@ -530,37 +529,59 @@
                 currentTotalDue = 0;
 
                 if (currentPendingInvoices.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-green-600 font-bold">All clear! No pending dues for this customer.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center p-6 text-gray-500 font-medium">No billing history found for this customer.</td></tr>';
                     document.getElementById('ledgerTotalDue').innerText = "0.00";
                     document.getElementById('settleBtn').disabled = true;
                     document.getElementById('settleBtn').classList.add('opacity-50');
                     return;
                 }
 
-                document.getElementById('settleBtn').disabled = false;
-                document.getElementById('settleBtn').classList.remove('opacity-50');
-
                 tbody.innerHTML = currentPendingInvoices.map(inv => {
-                    currentTotalDue += parseFloat(inv.credit_amount);
+                    const creditAmt = parseFloat(inv.credit_amount || 0);
+                    const totalAmt = parseFloat(inv.total_amount || 0);
+                    const paidAmt = totalAmt - creditAmt; // amount that has been paid towards this invoice
+                    
+                    currentTotalDue += creditAmt;
+
                     const isPrevBalance = inv.invoice_number.startsWith('PB-');
                     const descText = isPrevBalance ? (inv.remark || 'Previous Balance Record') : (inv.remark ? `Invoice Note: ${inv.remark}` : 'Standard Invoice');
                     
+                    const isFullyPaid = creditAmt <= 0;
+                    let rowClass = "hover:bg-gray-50";
+
+                    // Color coordinate rows
+                    if (isPrevBalance) {
+                        rowClass += " bg-orange-50/30";
+                    } else if (isFullyPaid) {
+                        rowClass += " bg-green-50/30"; // visually distinct for paid entries
+                    }
+                    
                     return `
-                        <tr class="hover:bg-gray-50 ${isPrevBalance ? 'bg-orange-50/30' : ''}">
+                        <tr class="${rowClass} transition-colors">
                             <td class="p-3 font-bold ${isPrevBalance ? 'text-orange-600' : 'text-gray-800'}">#${inv.invoice_number}</td>
-                            <td class="p-3 text-gray-600">${new Date(inv.created_at).toLocaleDateString('en-GB')}</td>
+                            <td class="p-3 text-gray-600 whitespace-nowrap">${new Date(inv.created_at).toLocaleDateString('en-GB')}</td>
                             <td class="p-3 text-gray-500 text-xs font-medium max-w-xs truncate" title="${descText}">${descText}</td>
-                            <td class="p-3 text-right text-gray-600">₹${inv.total_amount.toFixed(2)}</td>
-                            <td class="p-3 text-right text-red-600 font-bold">₹${inv.credit_amount.toFixed(2)}</td>
+                            <td class="p-3 text-right text-gray-600 font-medium">₹${totalAmt.toFixed(2)}</td>
+                            <td class="p-3 text-right text-green-600 font-semibold">₹${paidAmt.toFixed(2)}</td>
+                            <td class="p-3 text-right ${creditAmt > 0 ? 'text-red-600 font-bold' : 'text-gray-400 font-medium'}">₹${creditAmt.toFixed(2)}</td>
                         </tr>
                     `;
                 }).join('');
 
                 document.getElementById('ledgerTotalDue').innerText = currentTotalDue.toFixed(2);
+                
+                // Disable settlement if nothing is owed
+                if (currentTotalDue <= 0) {
+                    document.getElementById('settleBtn').disabled = true;
+                    document.getElementById('settleBtn').classList.add('opacity-50');
+                } else {
+                    document.getElementById('settleBtn').disabled = false;
+                    document.getElementById('settleBtn').classList.remove('opacity-50');
+                }
 
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-red-600">Error loading ledger.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center p-6 text-red-600">Error loading ledger.</td></tr>';
             }
         }
 
@@ -582,8 +603,11 @@
             const originalSettleAmount = settleAmount;
 
             try {
+                // Filter to only those invoices that actually have a pending amount
+                let unpaidInvoices = currentPendingInvoices.filter(inv => parseFloat(inv.credit_amount) > 0);
+
                 // 1. Loop through oldest unpaid invoices and reduce credit_amount
-                for (let inv of currentPendingInvoices) {
+                for (let inv of unpaidInvoices) {
                     if (settleAmount <= 0) break;
                     
                     let invoiceCredit = parseFloat(inv.credit_amount);
@@ -625,7 +649,7 @@
                 alert("An error occurred while processing settlement.");
             } finally {
                 btn.innerText = "Settle Dues";
-                btn.disabled = false;
+                btn.disabled = currentTotalDue <= 0;
             }
         }
     </script>
