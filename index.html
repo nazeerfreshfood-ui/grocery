@@ -863,18 +863,44 @@
                 const dContact = document.getElementById('d_contact').value || document.getElementById('b_contact').value;
                 const dAddress = document.getElementById('d_address').value || document.getElementById('b_address').value;
                 const remark = document.getElementById('invoice_remark').value.trim();
-                const receivedAmount = parseFloat(document.getElementById('received_amount').value) || 0;
                 
+                // Logic to handle excess payments updating the ledger correctly
                 let c_amount = 0, cr_amount = 0;
+                let excessToSettle = 0;
+                let totalReceived = parseFloat(document.getElementById('received_amount').value);
+                
+                if (isNaN(totalReceived)) {
+                    totalReceived = (pMode === 'Cash') ? totalAmount : 0;
+                }
+
                 if(pMode === 'Split') {
-                    c_amount = parseFloat(document.getElementById('split_cash').value) || 0;
-                    cr_amount = parseFloat(document.getElementById('split_credit').value) || 0;
+                    totalReceived = parseFloat(document.getElementById('split_cash').value) || 0;
+                    c_amount = totalReceived;
+                    if (totalReceived >= totalAmount) {
+                        cr_amount = 0;
+                        excessToSettle = totalReceived - totalAmount;
+                    } else {
+                        cr_amount = totalAmount - totalReceived;
+                    }
                 } else if (pMode === 'Credit') {
-                    cr_amount = Math.max(0, totalAmount - receivedAmount);
-                    c_amount = receivedAmount;
-                } else {
-                    c_amount = totalAmount;
-                    cr_amount = 0;
+                    c_amount = totalReceived;
+                    if (totalReceived >= totalAmount) {
+                        cr_amount = 0;
+                        excessToSettle = totalReceived - totalAmount;
+                    } else {
+                        cr_amount = totalAmount - totalReceived;
+                    }
+                } else { // Cash
+                    if (document.getElementById('received_amount').value === '') {
+                        totalReceived = totalAmount; 
+                    }
+                    c_amount = totalReceived;
+                    if (totalReceived >= totalAmount) {
+                        cr_amount = 0;
+                        excessToSettle = totalReceived - totalAmount;
+                    } else {
+                        cr_amount = totalAmount - totalReceived;
+                    }
                 }
 
                 await supabaseClient.from('bill_to_customers').upsert({ name: bName, contact: document.getElementById('b_contact').value, address: document.getElementById('b_address').value }, { onConflict: 'name' });
@@ -887,7 +913,7 @@
                     deliver_to_name: dName, deliver_to_contact: dContact, deliver_to_address: dAddress, 
                     payment_mode: pMode, total_amount: totalAmount,
                     remark: remark, cash_amount: c_amount, credit_amount: cr_amount,
-                    received_amount: receivedAmount
+                    received_amount: totalReceived // Explicitly store what we got
                 };
                 
                 let invNumber = "";
@@ -941,7 +967,50 @@
                     await supabaseClient.from('catalog').upsert({ material_desc: item.name, material_code: item.mcode, category: item.cat, unit: item.unit }, { onConflict: 'material_desc' });
                 }
 
-                triggerPrint(invNumber, pMode, bName, document.getElementById('b_contact').value, document.getElementById('b_address').value, dName, dContact, dAddress, items, totalAmount, remark, receivedAmount, cr_amount, pastDues);
+                // Auto-Settle Past Dues if excess amount exists (Crucial for Customer Ledger logic)
+                if (excessToSettle > 0 && bName) {
+                    try {
+                        const { data: unpaidInvs, error: unpaidErr } = await supabaseClient.from('invoices')
+                            .select('id, credit_amount')
+                            .eq('bill_to_name', bName)
+                            .gt('credit_amount', 0)
+                            .neq('id', invoiceId) // skip current invoice
+                            .order('created_at', { ascending: true });
+                            
+                        if (!unpaidErr && unpaidInvs) {
+                            for (let oldInv of unpaidInvs) {
+                                if (excessToSettle <= 0) break;
+                                
+                                let oldCredit = parseFloat(oldInv.credit_amount);
+                                let deduction = Math.min(oldCredit, excessToSettle);
+                                let newCredit = oldCredit - deduction;
+                                excessToSettle -= deduction;
+                                
+                                await supabaseClient.from('invoices')
+                                    .update({ credit_amount: newCredit })
+                                    .eq('id', oldInv.id);
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Auto-settlement of past dues failed:", e);
+                    }
+                }
+                
+                // Add to Cashbook
+                if (totalReceived > 0) {
+                    try {
+                        await supabaseClient.from('cashbook_entries').insert([{
+                            created_by: activeUserEmail,
+                            type: 'in',
+                            amount: totalReceived,
+                            description: `Payment received for Invoice ${invNumber} - ${bName}`
+                        }]);
+                    } catch (cbErr) {
+                        console.warn("Cashbook log skipped:", cbErr);
+                    }
+                }
+
+                triggerPrint(invNumber, pMode, bName, document.getElementById('b_contact').value, document.getElementById('b_address').value, dName, dContact, dAddress, items, totalAmount, remark, totalReceived, cr_amount, pastDues);
                 setTimeout(() => window.location.reload(), 1500);
 
             } catch (err) {
